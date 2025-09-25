@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ joia.nome }}{% endblock %}
+
+{% block content %}
+    <div class="bg-white p-8 rounded-lg shadow-md flex flex-col md:flex-row items-start">
+        <img class="w-full md:w-1/2 rounded-lg" src="{{ joia.imagem_url|default:'https://via.placeholder.com/800x600.png?text=Joia' }}" alt="{{ joia.nome }}">
+        
+        <div class="md:ml-8 mt-6 md:mt-0 w-full md:w-1/2">
+            <h1 class="text-3xl font-bold text-gray-800">{{ joia.nome }}</h1>
+            <p class="text-gray-600 mt-2">{{ joia.descricao }}</p>
+            
+            <div class="mt-4">
+                <span class="text-4xl font-bold text-gray-900">R$ {{ joia.preco }}</span>
+            </div>
+            
+            <form id="form-adicionar-carrinho" class="mt-6">
+                {% csrf_token %}
+                <input type="hidden" name="joia_id" value="{{ joia.id }}">
+                <div class="flex items-center space-x-4">
+                    <label for="quantidade" class="text-gray-700">Quantidade:</label>
+                    <input type="number" name="quantidade" id="quantidade" value="1" min="1" max="{{ joia.estoque }}" class="w-20 px-3 py-2 border rounded-lg text-center" required>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                        Adicionar ao Carrinho
+                    </button>
+                </div>
+                <p id="mensagem-status" class="mt-4 font-bold"></p>
+            </form>
+
+            <div class="mt-8 text-gray-700">
+                <h3 class="font-bold">Detalhes:</h3>
+                <ul class="list-disc list-inside">
+                    <li>Categoria: {{ joia.categoria }}</li>
+                    <li>Subcategoria: {{ joia.subcategoria }}</li>
+                    <li>Tamanho: {{ joia.tamanho|default:"Não especificado" }}</li>
+                    <li>Em estoque: {{ joia.estoque }} unidades</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('form-adicionar-carrinho').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const mensagemStatus = document.getElementById('mensagem-status');
+
+        fetch("{% url 'adicionar_ao_carrinho' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mensagemStatus.textContent = data.message;
+                mensagemStatus.className = 'mt-4 font-bold text-green-600';
+                // Atualizar o contador do carrinho no header (lógica mais complexa)
+            } else {
+                mensagemStatus.textContent = data.message;
+                mensagemStatus.className = 'mt-4 font-bold text-red-600';
+            }
+        })
+        .catch(error => {
+            mensagemStatus.textContent = 'Erro ao conectar. Tente novamente.';
+            mensagemStatus.className = 'mt-4 font-bold text-red-600';
+        });
+    });
+</script>
+{% endblock %}

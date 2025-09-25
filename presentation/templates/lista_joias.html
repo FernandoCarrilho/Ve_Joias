@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo de Jóias{% endblock %}
+
+{% block content %}
+    <h1 class="text-4xl font-bold text-gray-800 mb-8">Nossas Jóias</h1>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for joia in joias %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105">
+            <a href="{% url 'detalhe_joia' joia.id %}">
+                <img class="w-full h-48 object-cover" src="{{ joia.imagem_url|default:'https://via.placeholder.com/400x300.png?text=Joia' }}" alt="{{ joia.nome }}">
+            </a>
+            <div class="p-4">
+                <h3 class="text-lg font-bold text-gray-900">{{ joia.nome }}</h3>
+                <p class="text-gray-600 mt-2">{{ joia.descricao }}</p>
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-xl font-bold text-gray-900">R$ {{ joia.preco }}</span>
+                    <a href="{% url 'detalhe_joia' joia.id %}" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Ver Detalhes</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p class="col-span-4 text-center text-gray-500">Nenhuma jóia encontrada.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

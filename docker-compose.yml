@@ -1,0 +1,44 @@
+# vejoias/docker-compose.yml
+
+
+services:
+  web:
+    # Constrói a imagem a partir do Dockerfile na pasta atual
+    build: .
+    # Mapeia a porta 8000 do contêiner para a porta 8000 da sua máquina local
+    ports:
+      - "8000:8000"
+    # Monta o diretório do seu código para permitir hot-reloading
+    # Mudanças no código na sua máquina serão refletidas no contêiner
+    volumes:
+      - .:/app
+    # Carrega as variáveis de ambiente do arquivo .env
+    env_file:
+      - .env
+    # Reinicia o contêiner automaticamente em caso de falha
+    restart: always
+    # Garante que o serviço 'db' seja iniciado antes do 'web'
+    depends_on:
+      - db
+    # Sobrescreve o CMD do Dockerfile para rodar o servidor
+    # Certifique-se de que o host do banco de dados está correto (o nome do serviço)
+    command: python manage.py runserver 0.0.0.0:8000
+
+  db:
+    # Usa a imagem oficial do PostgreSQL no Docker Hub
+    image: postgres:14-alpine
+    # Define as variáveis de ambiente para o banco de dados
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    # Mapeia a porta padrão do PostgreSQL (5432)
+    ports:
+      - "5432:5432"
+    # Persiste os dados do banco em um volume, evitando a perda de dados ao parar o contêiner
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+# Define os volumes que serão usados pelos serviços
+volumes:
+  postgres_data:
