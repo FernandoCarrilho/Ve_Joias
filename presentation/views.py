@@ -38,7 +38,6 @@ from core.exceptions import (
 )
 from core.entities import Usuario, Endereco
 
-# NOVAS IMPORTAÇÕES: Importamos os formulários que acabamos de criar
 from .forms import (
     AdicionarItemCarrinhoForm,
     CheckoutForm,
@@ -105,7 +104,7 @@ def detalhe_joia(request, joia_id):
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
             # Se a API retornar 404, levantamos o 404 do Django para a página web
-            raise Http404("Joia não encontrada.")
+            raise Http404("Jóia não encontrada.")
         # Para outros erros HTTP, retornamos um erro genérico
         return HttpResponseServerError("Erro de comunicação com o serviço de catálogo.")
     except requests.exceptions.RequestException:
@@ -201,7 +200,7 @@ def processar_checkout(request):
 
 
 # ====================================================================
-# NOVAS VIEWS DE AUTENTICAÇÃO
+# VIEWS DE AUTENTICAÇÃO
 # ====================================================================
 
 def registro(request):
@@ -277,7 +276,7 @@ def gerenciar_produtos(request):
         raise PermissionDenied("Você não tem permissão para acessar esta página.")
 
     # Busca todos os produtos usando o repositório
-    joias = joia_repo.buscar_todos() # NOVO MÉTODO NECESSÁRIO NO REPOSITÓRIO
+    joias = joia_repo.buscar_todos() # MÉTODO NECESSÁRIO NO REPOSITÓRIO
     context = {
         'joias': joias
     }
@@ -349,9 +348,9 @@ def excluir_joia(request, joia_id):
         joia_model = JoiaModel.objects.get(id=joia_id)
         joia_model.delete()
         # Opcional: Adicione uma mensagem de sucesso para o usuário
-        messages.success(request, 'Joia excluída com sucesso!')
+        messages.success(request, 'Jóia excluída com sucesso!')
     except JoiaModel.DoesNotExist:
-        messages.error(request, 'Joia não encontrada.')
+        messages.error(request, 'Jóia não encontrada.')
         
     return redirect('gerenciar_produtos')
 
