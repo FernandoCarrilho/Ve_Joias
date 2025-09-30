@@ -14,12 +14,13 @@
                 <span class="text-4xl font-bold text-gray-900">R$ {{ joia.preco }}</span>
             </div>
             
-            <form id="form-adicionar-carrinho" class="mt-6">
-                {% csrf_token %}
-                <input type="hidden" name="joia_id" value="{{ joia.id }}">
+            <form id="form-adicionar-carrinho" class="mt-6" method="post" action="{% url 'adicionar_ao_carrinho' %}">
+                {% csrf_token %} <input type="hidden" name="joia_id" value="{{ joia.id }}">
+
                 <div class="flex items-center space-x-4">
-                    <label for="quantidade" class="text-gray-700">Quantidade:</label>
-                    <input type="number" name="quantidade" id="quantidade" value="1" min="1" max="{{ joia.estoque }}" class="w-20 px-3 py-2 border rounded-lg text-center" required>
+                    <label for="id_quantidade" class="text-gray-700">Quantidade:</label>
+                    <input type="number" name="quantidade" id="id_quantidade" value="1" min="1" max="{{ joia.estoque }}" class="w-20 px-3 py-2 border rounded-lg text-center" required>
+                    
                     <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
                         Adicionar ao Carrinho
                     </button>
@@ -49,7 +50,7 @@
         const formData = new FormData(form);
         const mensagemStatus = document.getElementById('mensagem-status');
 
-        fetch("{% url 'adicionar_ao_carrinho' %}", {
+        fetch(form.action, {
             method: 'POST',
             body: formData,
             headers: {
@@ -61,7 +62,6 @@
             if (data.success) {
                 mensagemStatus.textContent = data.message;
                 mensagemStatus.className = 'mt-4 font-bold text-green-600';
-                // Atualizar o contador do carrinho no header (lógica mais complexa)
             } else {
                 mensagemStatus.textContent = data.message;
                 mensagemStatus.className = 'mt-4 font-bold text-red-600';

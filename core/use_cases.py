@@ -3,8 +3,10 @@ from .exceptions import (
     EstoqueInsuficienteError, 
     ItemNaoEncontradoError, 
     CarrinhoVazioError,
-    PagamentoFalhouError
+    PagamentoFalhouError,
+    ApplicationError,
 )
+from infrastructure.email_service import email_service
 from typing import Protocol, List, Optional
 from decimal import Decimal
 
@@ -50,7 +52,11 @@ class AdicionarItemAoCarrinho:
             raise ItemNaoEncontradoError("Jóia não encontrada.")
 
         if joia.estoque < quantidade:
-            raise EstoqueInsuficienteError("Estoque insuficiente para esta jóia.")
+            raise EstoqueInsuficienteError(
+                joia_id=joia_id,
+                estoque_atual=joia.estoque,
+                quantidade_solicitada=quantidade
+            )
         
         carrinho = self.repo_carrinho.buscar_por_usuario(usuario)
         if not carrinho:
@@ -91,12 +97,14 @@ class CriarPedido:
                  repo_carrinho: IRepositorioCarrinhos,
                  repo_joias: IRepositorioJoias,
                  repo_pedidos: IRepositorioPedidos,
-                 gateway_pagamento: IGatewayPagamento):
+                 gateway_pagamento: IGatewayPagamento,
+                 email_service=email_service,):
         
         self.repo_carrinho = repo_carrinho
         self.repo_joias = repo_joias
         self.repo_pedidos = repo_pedidos
         self.gateway_pagamento = gateway_pagamento
+        self.email_service = email_service
 
     def execute(self, usuario: Usuario, tipo_pagamento: str, endereco: Endereco) -> Pedido:
         carrinho = self.repo_carrinho.buscar_por_usuario(usuario)
@@ -143,5 +151,10 @@ class CriarPedido:
         
         carrinho.itens = []
         self.repo_carrinho.salvar(carrinho)
+        try:
+            self.email_service.enviar_confirmacao_pedido(pedido)
+        except Exception as e:
+            # Em produção, você logaria isso. Por enquanto, apenas ignora
+            print(f"Erro ao enviar e-mail: {e}")
         
         return pedido

@@ -6,7 +6,7 @@
 <h1 class="text-4xl font-bold text-gray-800 mb-8">Finalizar Compra</h1>
 
 <div class="bg-white p-8 rounded-lg shadow-md">
-    <form id="form-checkout">
+    <form id="form-checkout" method="post">
         {% csrf_token %}
 
         <div class="mb-8">
@@ -27,70 +27,34 @@
 
         <div class="mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Endereço de Entrega</h2>
-            <input type="hidden" name="endereco_id" value="1"> 
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="cep" class="block text-gray-700">CEP</label>
-                    <input type="text" id="cep" name="cep" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="rua" class="block text-gray-700">Endereço Completo</label>
-                    <input type="text" id="rua" name="rua" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="numero" class="block text-gray-700">Número</label>
-                    <input type="text" id="numero" name="numero" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="bairro" class="block text-gray-700">Bairro</label>
-                    <input type="text" id="bairro" name="bairro" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="cidade" class="block text-gray-700">Cidade</label>
-                    <input type="text" id="cidade" name="cidade" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div>
-                    <label for="estado" class="block text-gray-700">Estado</label>
-                    <input type="text" id="estado" name="estado" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                </div>
-                <div class="md:col-span-2">
-                    <label for="referencia" class="block text-gray-700">Referência (Opcional)</label>
-                    <textarea id="referencia" name="referencia" rows="2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
-                </div>
+                {{ form.cep.label_tag }}
+                {{ form.cep }}
+
+                {{ form.rua.label_tag }}
+                {{ form.rua }}
+
+                {{ form.numero.label_tag }}
+                {{ form.numero }}
+
+                {{ form.bairro.label_tag }}
+                {{ form.bairro }}
+
+                {{ form.cidade.label_tag }}
+                {{ form.cidade }}
+
+                {{ form.estado.label_tag }}
+                {{ form.estado }}
+
+                {{ form.referencia.label_tag }}
+                {{ form.referencia }}
             </div>
         </div>
 
         <div>
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Método de Pagamento</h2>
             <div class="space-y-4">
-                <label class="flex items-center space-x-2">
-                    <input type="radio" name="tipo_pagamento" value="pix" class="form-radio text-blue-600" checked>
-                    <span>Pix</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="radio" name="tipo_pagamento" value="cartao" class="form-radio text-blue-600">
-                    <span>Cartão de Crédito</span>
-                </label>
-            </div>
-
-            <div id="campos-cartao" class="mt-6 hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="numero_cartao" class="block text-gray-700">Número do Cartão</label>
-                    <input type="text" id="numero_cartao" name="numero_cartao" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="nome_titular" class="block text-gray-700">Nome do Titular</label>
-                    <input type="text" id="nome_titular" name="nome_titular" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="vencimento" class="block text-gray-700">Data de Vencimento</label>
-                    <input type="text" id="vencimento" name="vencimento" placeholder="MM/AA" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="cvv" class="block text-gray-700">CVV</label>
-                    <input type="text" id="cvv" name="cvv" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
+                {{ form.tipo_pagamento }}
             </div>
         </div>
 
@@ -108,19 +72,6 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const tipoPagamentoRadios = document.querySelectorAll('input[name="tipo_pagamento"]');
-        const camposCartaoDiv = document.getElementById('campos-cartao');
-
-        tipoPagamentoRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.value === 'cartao') {
-                    camposCartaoDiv.classList.remove('hidden');
-                } else {
-                    camposCartaoDiv.classList.add('hidden');
-                }
-            });
-        });
-        
         document.getElementById('form-checkout').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -140,8 +91,6 @@
                 if (data.success) {
                     mensagemStatus.textContent = 'Pedido realizado com sucesso!';
                     mensagemStatus.className = 'mt-4 font-bold text-green-600';
-                    // Redireciona o usuário para uma página de confirmação
-                    window.location.href = '{% url "lista_joias" %}'; // Exemplo
                 } else {
                     mensagemStatus.textContent = data.message;
                     mensagemStatus.className = 'mt-4 font-bold text-red-600';

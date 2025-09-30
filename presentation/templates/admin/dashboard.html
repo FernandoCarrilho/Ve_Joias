@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Painel de Administração{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-md mt-10">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Painel de Administração</h1>
+    <p class="text-gray-600 mb-8">Bem-vindo(a), {{ user.username }}. Use o painel abaixo para gerenciar o seu e-commerce.</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <a href="#" class="bg-blue-600 text-white p-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+            <h2 class="text-xl font-semibold mb-2">Gerenciar Produtos</h2>
+            <p>Adicione, edite ou remova produtos do seu catálogo.</p>
+        </a>
+        <a href="#" class="bg-green-600 text-white p-6 rounded-lg shadow-md hover:bg-green-700 transition-colors">
+            <h2 class="text-xl font-semibold mb-2">Gerenciar Pedidos</h2>
+            <p>Visualize e processe os pedidos dos clientes.</p>
+        </a>
+        <a href="#" class="bg-yellow-600 text-white p-6 rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+            <h2 class="text-xl font-semibold mb-2">Gerenciar Clientes</h2>
+            <p>Visualize e gerencie as contas dos seus clientes.</p>
+        </a>
+        <a href="{% url 'gerenciar_produtos' %}" class="bg-blue-600 text-white p-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+            <h2 class="text-xl font-semibold mb-2">Gerenciar Produtos</h2>
+            <p>Adicione, edite ou remova produtos do seu catálogo.</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

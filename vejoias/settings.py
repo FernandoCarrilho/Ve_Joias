@@ -37,10 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'infrastructure',
-    'presentation',
-    'vejoias',
-    'core',  # Nossa aplicação de infraestrutura
+    
+    'vejoias.infrastructure',
+    'vejoias.presentation',
+    'vejoias.core',
+    'rest_framework', 
+    'drf_spectacular',
+    'rest_framework_simplejwt', # Adiciona o Django REST Framework
+
     
     # Nossas aplicações
     'vejoias.infrastructure.apps.InfrastructureConfig', # Adiciona nossa app
@@ -145,3 +149,25 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ====================================================================
+# CONFIGURAÇÕES DE E-MAIL
+# ====================================================================
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API do Vê Joias',
+    'DESCRIPTION': 'Documentação completa da API de e-commerce da Vê Joias.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    )
+}
+
+# Configurações de E-mail (Modo de Desenvolvimento)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

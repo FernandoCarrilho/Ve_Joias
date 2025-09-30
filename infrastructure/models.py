@@ -79,7 +79,7 @@ class Joia(models.Model):
         choices=Subcategoria.choices
     )
     
-    tamanho = models.CharField(_("tamanho"), max_length=50, blank=True, null=True)
+    tamanho = models.CharField(_("tamanho"), max_length=20, blank=True, null=True)
     genero = models.CharField(_("gênero"), max_length=20, blank=True, null=True)
     tipo_publico = models.CharField(_("público"), max_length=20, blank=True, null=True,
                                   choices=[('ADULTO', 'Adulto'), ('INFANTIL', 'Infantil')])

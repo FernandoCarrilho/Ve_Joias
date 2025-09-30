@@ -1,9 +1,9 @@
 from typing import List, Optional
 from django.core.exceptions import ObjectDoesNotExist
 
-from vejoias.infrastructure import models
-from vejoias.core import entities
-from vejoias.core.exceptions import ItemNaoEncontradoError, CarrinhoVazioError
+from infrastructure import models
+from core import entities
+from core.exceptions import ItemNaoEncontradoError, CarrinhoVazioError
 
 # ====================================================================
 # REPOSITÓRIOS: Adaptadores que implementam os protocolos da camada de domínio.
@@ -149,3 +149,4 @@ class PedidoRepository:
                 quantidade=item_entity.quantidade,
                 preco_unitario=item_entity.joia.preco
             )
+        return pedido_entity

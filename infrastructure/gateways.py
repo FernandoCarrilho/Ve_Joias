@@ -5,7 +5,7 @@ import requests
 from decimal import Decimal
 from typing import Protocol, List
 
-from vejoias.core.exceptions import PagamentoFalhouError
+from core.exceptions import PagamentoFalhouError
 
 # ====================================================================
 # PROTOCOLOS: As interfaces que os gateways devem implementar.
