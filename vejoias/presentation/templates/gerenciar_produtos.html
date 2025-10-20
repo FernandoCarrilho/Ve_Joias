@@ -1,54 +1,147 @@
 {% extends "base.html" %}
 
-{% block title %}Gerenciar Produtos | Admin{% endblock %}
+{% block title %}Gerenciar Joias{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Gerenciar Jóias</h1>
-        <a href="{% url 'adicionar_joia' %}" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-md">
-            + Adicionar Nova Joia
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+    <div class="flex justify-between items-center mb-10 border-b pb-3">
+        <h1 class="text-4xl font-extrabold text-gray-900">
+            <i class="fas fa-gem text-pink-600 mr-3"></i> Catálogo de Joias (Inventário)
+        </h1>
+        <!-- Botão para Adicionar Nova Joia -->
+        <a href="{% url 'admin_adicionar_joia' %}" 
+           class="bg-pink-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-pink-700 transition duration-300 flex items-center font-semibold">
+            <i class="fas fa-plus-circle mr-2"></i> + Adicionar Nova Joia
         </a>
     </div>
 
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponível</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for joia in joias %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ joia.id }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ joia.nome }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ {{ joia.preco|floatformat:2 }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ joia.estoque }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        {% if joia.disponivel %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Sim</span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Não</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a href="{% url 'editar_joia' joia.id %}" class="text-indigo-600 hover:text-indigo-900 mr-4">Editar</a>
-                        <a href="{% url 'excluir_joia' joia.id %}" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir {{ joia.nome }}?');">Excluir</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">Nenhuma jóia encontrada.</td>
-                </tr>
+    <!-- Filtros e Busca -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+        <form method="get" class="flex-grow flex space-x-4">
+            <!-- Campo de Busca -->
+            <input type="text" name="busca" placeholder="Buscar por Nome ou ID..."
+                   value="{{ busca_termo|default:'' }}"
+                   class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-pink-500 focus:border-pink-500">
+            
+            <!-- Filtro por Categoria -->
+            <select name="categoria" onchange="this.form.submit()"
+                    class="p-3 border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-pink-500 focus:border-pink-500">
+                <option value="">Todas as Categorias</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}" {% if categoria.id|stringformat:"s" == categoria_selecionada|stringformat:"s" %}selected{% endif %}>
+                        {{ categoria.nome }}
+                    </option>
                 {% endfor %}
-            </tbody>
-        </table>
+            </select>
+
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-300">
+                <i class="fas fa-search"></i>
+            </button>
+            
+            {% if busca_termo or categoria_selecionada %}
+                <a href="{% url 'gerenciar_produtos' %}" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition duration-300 flex items-center">
+                    Limpar
+                </a>
+            {% endif %}
+        </form>
     </div>
+
+    <!-- Tabela de Joias -->
+    {% if joias %}
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Imagem
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Joia
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Categoria
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Preço (R$)
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Estoque
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Ações
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for joia in joias %}
+                        <tr class="hover:bg-pink-50 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <img src="{{ joia.imagem_url|default:'https://placehold.co/40x40/f7e0e7/581c87?text=Joia' }}" 
+                                     alt="{{ joia.nome }}" class="h-10 w-10 rounded-full object-cover border">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                {{ joia.nome }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {{ joia.categoria.nome }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-pink-600">
+                                {{ joia.preco|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                {% if joia.estoque > 10 %}
+                                    <span class="text-green-600 font-semibold">{{ joia.estoque }}</span>
+                                {% elif joia.estoque > 0 %}
+                                    <span class="text-yellow-600 font-semibold">{{ joia.estoque }}</span>
+                                {% else %}
+                                    <span class="text-red-600 font-semibold">Esgotado</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-3">
+                                <a href="{% url 'admin_editar_joia' joia.id %}" 
+                                   class="text-indigo-600 hover:text-indigo-900 transition duration-150 font-semibold"
+                                   title="Editar Joia">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'admin_deletar_joia' joia.id %}" class="inline-block" 
+                                      onsubmit="return confirm('Tem certeza que deseja deletar a joia: {{ joia.nome }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" 
+                                            class="text-red-600 hover:text-red-900 transition duration-150 font-semibold"
+                                            title="Deletar Joia">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if is_paginated %}
+                <div class="px-6 py-3 bg-gray-50 border-t flex justify-center items-center">
+                    <!-- ... Lógica de Paginação ... -->
+                </div>
+            {% endif %}
+
+        </div>
+    {% else %}
+        <div class="text-center bg-white p-12 rounded-xl shadow-lg border-2 border-dashed border-gray-200">
+            <i class="fas fa-box-open text-6xl text-gray-400 mb-4"></i>
+            <p class="text-2xl font-semibold mb-2">Nenhuma joia encontrada.</p>
+            <p class="text-gray-500">Clique em "Adicionar Nova Joia" para começar a construir seu catálogo.</p>
+        </div>
+    {% endif %}
+    
+    <!-- Link de retorno para o Dashboard -->
+    <div class="mt-8 text-center">
+        <a href="{% url 'dashboard' %}" class="text-sm text-gray-500 hover:text-gray-700 transition duration-150 flex items-center justify-center">
+            <i class="fas fa-arrow-left mr-1"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
 </div>
-{% endblock content %}
+{% endblock %}

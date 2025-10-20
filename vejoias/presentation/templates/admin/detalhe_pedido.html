@@ -1,99 +1,141 @@
-{% extends "base_admin.html" %}
-{% block title %}Detalhes do Pedido #{{ pedido.id }}{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Detalhe do Pedido #{{ pedido.id }}{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto py-10">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Detalhes do Pedido #{{ pedido.id }}</h1>
-        <a href="{% url 'admin_listagem_pedidos' %}" class="text-blue-600 hover:text-blue-800 font-medium">
-            &larr; Voltar para a Lista
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+    
+    <div class="mb-6 flex justify-between items-center border-b pb-3">
+        <h1 class="text-3xl font-extrabold text-gray-900">
+            <i class="fas fa-file-invoice-dollar text-pink-600 mr-2"></i> Pedido #{{ pedido.id }}
+        </h1>
+        <a href="{% url 'gerenciar_pedidos' %}" class="text-sm text-pink-600 hover:text-pink-800 transition duration-150 flex items-center font-medium">
+            <i class="fas fa-arrow-left mr-1"></i> Voltar à Listagem
         </a>
     </div>
 
-    <div class="bg-white p-6 rounded-lg shadow mb-8 border-t-4 border-blue-500">
-        <h2 class="text-xl font-bold mb-3">Gerenciar Status</h2>
-        <form method="post" class="flex items-center space-x-4">
-            {% csrf_token %}
-            <label for="status_update" class="font-medium text-gray-700">Status Atual: 
-                <span class="font-extrabold text-lg 
-                    {% if pedido.status == 'PAGO' %}text-green-600
-                    {% elif pedido.status == 'PENDENTE' %}text-yellow-600
-                    {% elif pedido.status == 'CANCELADO' %}text-red-600
-                    {% else %}text-gray-600{% endif %}">
+    <!-- Seção de Status e Ações -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Status Atual -->
+        <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Status do Pedido</h2>
+            <p class="text-lg font-semibold mb-3">Status Atual:</p>
+            
+            {% if pedido.status == 'PAGO' or pedido.status == 'ENTREGUE' %}
+                <span class="px-3 py-1 inline-flex text-lg leading-5 font-bold rounded-full bg-green-100 text-green-800">
                     {{ pedido.status }}
                 </span>
-            </label>
-            
-            <select name="status" id="status_update" class="border rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
-                {% for status_choice in status_choices %}
-                    <option value="{{ status_choice }}" {% if status_choice == pedido.status %}selected{% endif %}>
-                        {{ status_choice }}
-                    </option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                Atualizar Status
-            </button>
-        </form>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <div class="bg-white p-6 rounded-lg shadow col-span-2">
-            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Informações do Cliente e Pagamento</h2>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <p class="text-sm font-semibold uppercase text-gray-500">Cliente</p>
-                    <p class="text-lg font-medium">{{ pedido.usuario.nome_completo|default:pedido.usuario.email }}</p>
-                    <p class="text-sm text-gray-600">Email: {{ pedido.usuario.email }}</p>
-                    <p class="text-sm text-gray-600">Telefone: {{ pedido.usuario.telefone|default:"N/A" }}</p>
-                </div>
-                <div>
-                    <p class="text-sm font-semibold uppercase text-gray-500">Total / ID Transação</p>
-                    <p class="text-2xl font-extrabold text-gray-900">R$ {{ pedido.total }}</p>
-                    <p class="text-sm text-gray-600 truncate">ID: {{ pedido.transacao_id|default:"N/A" }}</p>
-                </div>
-            </div>
-            
-            {% if pedido.url_pagamento %}
-            <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p class="text-sm font-semibold uppercase text-gray-500">URL de Pagamento (Boleto/Pix)</p>
-                <a href="{{ pedido.url_pagamento }}" target="_blank" class="text-blue-600 break-all hover:underline text-sm">{{ pedido.url_pagamento }}</a>
-            </div>
+            {% elif pedido.status == 'PENDENTE' %}
+                <span class="px-3 py-1 inline-flex text-lg leading-5 font-bold rounded-full bg-yellow-100 text-yellow-800">
+                    {{ pedido.status }}
+                </span>
+            {% else %}
+                <span class="px-3 py-1 inline-flex text-lg leading-5 font-bold rounded-full bg-blue-100 text-blue-800">
+                    {{ pedido.status }}
+                </span>
             {% endif %}
+
+            <!-- Formulário de Atualização de Status -->
+            <form method="post" action="{% url 'admin_atualizar_status' pedido.id %}" class="mt-6">
+                {% csrf_token %}
+                <label for="novo-status" class="block text-sm font-medium text-gray-700 mb-2">Mudar para:</label>
+                <select id="novo-status" name="status" required 
+                        class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 text-base mb-4">
+                    {% for status_choice in status_choices %}
+                        <option value="{{ status_choice }}" {% if status_choice == pedido.status %}disabled class="bg-gray-100"{% endif %}>
+                            {{ status_choice|capfirst }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" 
+                        class="w-full bg-indigo-600 text-white py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium hover:bg-indigo-700 transition duration-300">
+                    Atualizar Status
+                </button>
+            </form>
         </div>
 
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Endereço de Entrega</h2>
-            <address class="not-italic text-gray-700 space-y-1">
-                <p>{{ pedido.endereco_entrega.rua }}, {{ pedido.endereco_entrega.numero }}</p>
-                <p>{{ pedido.endereco_entrega.bairro }}</p>
-                <p>{{ pedido.endereco_entrega.cidade }}, {{ pedido.endereco_entrega.estado }} - CEP: {{ pedido.endereco_entrega.cep }}</p>
-            </address>
+        <!-- Informações do Cliente e Entrega -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Dados do Cliente e Entrega</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                <div>
+                    <p class="text-gray-500 font-medium">Cliente:</p>
+                    <p class="text-gray-900 font-semibold">{{ pedido.usuario.username|default:"Cliente Anônimo" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 font-medium">Email:</p>
+                    <p class="text-gray-900">{{ pedido.usuario.email|default:"N/A" }}</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <p class="text-gray-500 font-medium">Endereço de Entrega:</p>
+                    <p class="text-gray-900 font-medium">{{ pedido.endereco.rua }}, {{ pedido.endereco.numero }}</p>
+                    <p class="text-gray-900">{{ pedido.endereco.cidade }} - {{ pedido.endereco.estado }}, CEP: {{ pedido.endereco.cep }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 font-medium">Data do Pedido:</p>
+                    <p class="text-gray-900">{{ pedido.data_pedido|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 font-medium">Método de Pagamento:</p>
+                    <p class="text-gray-900">{{ pedido.metodo_pagamento|default:"Não Especificado" }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-lg shadow">
-        <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-4">Itens do Pedido</h2>
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joia</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unitário</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for item in pedido.items %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.joia.nome }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ {{ item.joia.preco }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.quantidade }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">R$ {{ item.joia.preco|times:item.quantidade }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Seção de Itens do Pedido -->
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Itens do Pedido</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unitário</th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qtd</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in itens_pedido %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <a href="{% url 'detalhe_joia' item.joia.id %}" class="text-pink-600 hover:text-pink-800 transition duration-150">
+                                {{ item.joia.nome }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                            R$ {{ item.preco_unitario|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                            {{ item.quantidade }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
+                            R$ {{ item.subtotal|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Sumário do Pedido -->
+        <div class="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+            <div class="w-full sm:w-1/2 lg:w-1/3 space-y-2">
+                <div class="flex justify-between font-medium text-gray-700">
+                    <span>Subtotal dos Itens:</span>
+                    <span>R$ {{ pedido.subtotal|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between font-medium text-gray-700">
+                    <span>Frete:</span>
+                    <span>R$ {{ pedido.valor_frete|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between font-extrabold text-xl text-pink-600 border-t pt-2">
+                    <span>Total do Pedido:</span>
+                    <span>R$ {{ pedido.valor_total|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>

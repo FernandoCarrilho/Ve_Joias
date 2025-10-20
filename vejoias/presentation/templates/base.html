@@ -3,51 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Vê Jóias{% endblock %}</title>
+    <title>{% block title %}Ve_Joias - Joias Exclusivas{% endblock %}</title>
+    
+    <!-- Importação do Tailwind CSS e Font Awesome -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Configuração do Tailwind para usar a fonte Inter -->
     <style>
-        /* Estilos personalizados */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7; /* Fundo levemente cinza */
+        }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
-    <nav class="bg-blue-600 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="{% url 'lista_joias' %}" class="text-xl font-bold">Vê Jóias</a>
-            <div class="flex items-center space-x-6">
-                {% if user.is_authenticated %}
-                    <span class="hidden md:inline">Olá, {{ user.username }}</span>
-                    <a href="{% url 'meu_perfil' %}" class="hover:underline">Meu Perfil</a>
-                    <a href="{% url 'logout' %}" class="hover:underline">Sair</a>
-                {% else %}
-                    <a href="{% url 'login' %}" class="hover:underline">Entrar</a>
-                    <a href="{% url 'registro' %}" class="hover:underline">Criar Conta</a>
-                {% endif %}
-                
-                <a href="{% url 'ver_carrinho' %}" class="hover:underline">
-                    Carrinho
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER/BARRA DE NAVEGAÇÃO -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            
+            <!-- Logo/Nome da Loja -->
+            <a href="{% url 'lista_joias' %}" class="flex items-center space-x-2">
+                <i class="fas fa-ring text-3xl text-pink-600"></i>
+                <span class="text-2xl font-extrabold text-gray-900">Ve_Joias</span>
+            </a>
+
+            <!-- Navegação Principal (Desktop) -->
+            <nav class="hidden md:flex space-x-8 items-center">
+                <a href="{% url 'lista_joias' %}" 
+                   class="text-gray-600 hover:text-pink-600 font-medium transition duration-150">
+                    Catálogo
                 </a>
-                {% if user.is_authenticated and user.is_staff %}
-                    <a href="{% url 'dashboard_admin' %}" class="hover:underline">Admin</a>
+                
+                <!-- Link Condicional para Administrador -->
+                {% if is_admin %}
+                <a href="{% url 'dashboard' %}" 
+                   class="text-indigo-600 hover:text-indigo-800 font-semibold transition duration-150 flex items-center bg-indigo-50 px-3 py-1 rounded-full">
+                    <i class="fas fa-tachometer-alt mr-1"></i> Dashboard Admin
+                </a>
+                {% endif %}
+
+                <!-- Ícones de Ação -->
+                <div class="flex space-x-6 items-center">
+                    
+                    <!-- Carrinho -->
+                    <a href="{% url 'ver_carrinho' %}" 
+                       class="text-gray-600 hover:text-pink-600 relative transition duration-150">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        {% if carrinho.itens.count > 0 %}
+                            <span class="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{{ carrinho.itens.count }}</span>
+                        {% endif %}
+                    </a>
+                    
+                    <!-- Perfil / Login -->
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'perfil' %}" 
+                           class="bg-pink-100 text-pink-700 px-3 py-1 rounded-full font-semibold hover:bg-pink-200 transition duration-150 flex items-center">
+                           <i class="fas fa-user-circle mr-2"></i> {{ user.username|default:'Meu Perfil' }}
+                        </a>
+                        <a href="{% url 'logout' %}" 
+                           class="text-gray-600 hover:text-red-600 transition duration-150"
+                           title="Sair">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'login' %}" 
+                           class="bg-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-pink-700 transition duration-150 shadow-md">
+                            Login
+                        </a>
+                    {% endif %}
+                </div>
+            </nav>
+
+            <!-- Menu Mobile (Placeholder - Requer JavaScript para toggle) -->
+            <button class="md:hidden text-gray-600 hover:text-pink-600 text-2xl" id="menu-button">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- Menu Dropdown Mobile (Escondido por padrão) -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 flex flex-col">
+                <a href="{% url 'lista_joias' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Catálogo</a>
+                {% if is_admin %}
+                <a href="{% url 'dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium text-indigo-700 hover:bg-indigo-50">Dashboard Admin</a>
+                {% endif %}
+                <a href="{% url 'ver_carrinho' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 flex items-center">
+                    <i class="fas fa-shopping-cart mr-2"></i> Carrinho
+                    {% if carrinho.itens.count > 0 %}
+                        <span class="ml-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{{ carrinho.itens.count }}</span>
+                    {% endif %}
+                </a>
+                
+                {% if user.is_authenticated %}
+                    <a href="{% url 'perfil' %}" class="block px-3 py-2 rounded-md text-base font-medium text-pink-700 hover:bg-pink-50 flex items-center">
+                        <i class="fas fa-user-circle mr-2"></i> {{ user.username|default:'Meu Perfil' }}
+                    </a>
+                    <a href="{% url 'logout' %}" class="block px-3 py-2 rounded-md text-base font-medium text-red-700 hover:bg-red-50 flex items-center">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Sair
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="block px-3 py-2 rounded-md text-base font-medium bg-pink-600 text-white text-center hover:bg-pink-700">Login / Cadastro</a>
                 {% endif %}
             </div>
         </div>
-    </nav>
-    
-    <main class="container mx-auto mt-8 p-4"> 
-        {% if messages %}
-        <ul class="messages">
-            {% for message in messages %}
-            <li{% if message.tags %} class="{{ message.tags }} p-3 mb-4 rounded-lg text-sm {% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-gray-200 text-gray-800{% endif %}"{% endif %}>{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
+    </header>
 
-        {% block content %}
-        {% endblock content %}
-        
-    </main> 
-    {% block scripts %}
-    {% endblock scripts %}
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
 
+    <!-- FOOTER/RODAPÉ -->
+    <footer class="bg-gray-800 text-white mt-auto pt-10 pb-6">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 border-b border-gray-700 pb-8 mb-6">
+                <!-- Seção 1: Institucional -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3 text-pink-400">Ve_Joias</h4>
+                    <ul class="space-y-2 text-sm text-gray-300">
+                        <li><a href="#" class="hover:text-pink-600 transition duration-150">Sobre Nós</a></li>
+                        <li><a href="#" class="hover:text-pink-600 transition duration-150">Política de Privacidade</a></li>
+                        <li><a href="#" class="hover:text-pink-600 transition duration-150">Termos de Uso</a></li>
+                    </ul>
+                </div>
+
+                <!-- Seção 2: Ajuda e Suporte -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3 text-pink-400">Ajuda</h4>
+                    <ul class="space-y-2 text-sm text-gray-300">
+                        <li><a href="#" class="hover:text-pink-600 transition duration-150">Fale Conosco</a></li>
+                        <li><a href="{% url 'historico_pedidos' %}" class="hover:text-pink-600 transition duration-150">Rastrear Pedido</a></li>
+                        <li><a href="#" class="hover:text-pink-600 transition duration-150">Trocas e Devoluções</a></li>
+                    </ul>
+                </div>
+
+                <!-- Seção 3: Meu Perfil -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3 text-pink-400">Minha Conta</h4>
+                    <ul class="space-y-2 text-sm text-gray-300">
+                        {% if user.is_authenticated %}
+                            <li><a href="{% url 'perfil' %}" class="hover:text-pink-600 transition duration-150">Meu Perfil</a></li>
+                            <li><a href="{% url 'historico_pedidos' %}" class="hover:text-pink-600 transition duration-150">Meus Pedidos</a></li>
+                            <li><a href="{% url 'logout' %}" class="hover:text-pink-600 transition duration-150">Sair</a></li>
+                        {% else %}
+                            <li><a href="{% url 'login' %}" class="hover:text-pink-600 transition duration-150">Login / Cadastre-se</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- Seção 4: Newsletter -->
+                <div class="col-span-2 md:col-span-1">
+                    <h4 class="text-lg font-semibold mb-3 text-pink-400">Receba Novidades</h4>
+                    <p class="text-sm text-gray-300 mb-4">Inscreva-se e ganhe 10% OFF na primeira compra!</p>
+                    <form>
+                        <input type="email" placeholder="Seu melhor e-mail" 
+                               class="w-full p-2 rounded-l-lg text-gray-900 border-none focus:outline-none">
+                        <button type="submit" class="w-full bg-pink-600 text-white font-semibold py-2 rounded-b-lg hover:bg-pink-700 transition duration-150">
+                            Inscrever
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Direitos Autorais e Redes Sociais -->
+            <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
+                <p>&copy; 2025 Ve_Joias. Todos os direitos reservados.</p>
+                <div class="flex space-x-4 mt-3 md:mt-0 text-xl">
+                    <a href="#" class="hover:text-pink-600 transition duration-150"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="hover:text-pink-600 transition duration-150"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="hover:text-pink-600 transition duration-150"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script para o Menu Mobile -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuButton = document.getElementById('menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (menuButton) {
+                menuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
 </body>
 </html>

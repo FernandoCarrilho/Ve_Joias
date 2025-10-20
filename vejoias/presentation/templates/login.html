@@ -1,28 +1,74 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Acesso à Conta{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md mx-auto mt-10">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Acessar sua Conta</h1>
-    {% if form.errors %}
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong class="font-bold">Erro!</strong>
-            <span class="block sm:inline">Nome de usuário ou senha inválidos.</span>
+<div class="container mx-auto px-4 py-16 max-w-lg min-h-screen flex items-center justify-center">
+
+    <div class="w-full bg-white p-10 rounded-xl shadow-2xl border border-gray-100">
+        <div class="text-center mb-8">
+            <i class="fas fa-lock text-6xl text-pink-600 mb-4"></i>
+            <h1 class="text-3xl font-extrabold text-gray-900">Acesse sua Conta Ve_Joias</h1>
+            <p class="text-sm text-gray-500 mt-2">Insira seus dados para continuar comprando.</p>
         </div>
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <div class="flex items-center justify-between mt-4">
-            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
-                Entrar
-            </button>
+
+        <form method="post" action="{% url 'login' %}" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Mensagens de Erro Globais -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Erro de Login:</strong>
+                    <span class="block sm:inline">{{ form.non_field_errors|striptags }}</span>
+                </div>
+            {% endif %}
+
+            <!-- Campo de Email/Username -->
+            <div>
+                <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">Email ou Nome de Usuário</label>
+                <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" 
+                       required autocomplete="email"
+                       class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:ring-pink-500 focus:border-pink-500"
+                       placeholder="seu.email@exemplo.com">
+                {% if form.username.errors %}<p class="mt-1 text-xs text-red-500">{{ form.username.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- Campo de Senha -->
+            <div>
+                <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">Senha</label>
+                <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}" 
+                       required autocomplete="current-password"
+                       class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:ring-pink-500 focus:border-pink-500">
+                {% if form.password.errors %}<p class="mt-1 text-xs text-red-500">{{ form.password.errors.0 }}</p>{% endif %}
+            </div>
+
+            <!-- Opções Adicionais (Esqueceu a senha) -->
+            <div class="flex items-center justify-between">
+                <div class="text-sm">
+                    <a href="{% url 'recuperar_senha' %}" class="font-medium text-pink-600 hover:text-pink-500 transition duration-150">
+                        Esqueceu sua senha?
+                    </a>
+                </div>
+            </div>
+
+            <!-- Botão de Login -->
+            <div>
+                <button type="submit"
+                        class="w-full bg-pink-600 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-pink-700 transition duration-300 transform hover:scale-[1.005] flex items-center justify-center text-lg">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Entrar
+                </button>
+            </div>
+        </form>
+
+        <!-- Link para Registro -->
+        <div class="mt-6 text-center text-sm">
+            <p class="text-gray-600">
+                Novo por aqui? 
+                <a href="{% url 'registro' %}" class="font-semibold text-pink-600 hover:text-pink-500 transition duration-150">
+                    Crie sua conta agora
+                </a>
+            </p>
         </div>
-        <p class="text-center text-gray-600 mt-4">
-            <a href="{% url 'password_reset' %}" class="text-blue-600 hover:underline">Esqueceu a senha?</a>
-        </p>
-    </form>
-    <p class="text-center text-gray-600 mt-4">Não tem uma conta? <a href="{% url 'registro' %}" class="text-blue-600 hover:underline">Registre-se</a></p>
+    </div>
 </div>
 {% endblock %}
