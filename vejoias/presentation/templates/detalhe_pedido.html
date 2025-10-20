@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto py-10">
+        <h1 class="text-4xl font-extrabold text-green-600 mb-2">Pedido Confirmado!</h1>
+        <p class="text-xl text-gray-600 mb-8">Agradecemos por sua compra na Vê Jóias. Detalhes abaixo:</p>
+        
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-8" role="alert">
+            <p class="font-bold">Notificação Enviada!</p>
+            <p>Você receberá uma confirmação de pedido via WhatsApp em breve. Por favor, verifique seu telefone.</p>
+        </div>
+
+        {% if pedido.status == 'PENDENTE' and pedido.url_pagamento %}
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-6 rounded-lg shadow-xl mb-8">
+                <h2 class="text-2xl font-bold text-yellow-900 border-b pb-3 mb-4">Ação Requerida: Concluir Pagamento</h2>
+                
+                <p class="mb-4">Para finalizar seu pedido, por favor, use o link abaixo. O status será atualizado via Webhook.</p>
+                
+                <a href="{{ pedido.url_pagamento }}" target="_blank" 
+                   class="inline-block bg-red-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-red-700 transition-colors shadow-lg">
+                    Acessar Link de Pagamento (Boleto/Pix) 
+                </a> 
+                
+                <p class="mt-4 text-sm text-yellow-700">O pedido será despachado após a confirmação de pagamento.</p>
+            </div>
+        {% endif %}
+
+        <div class="bg-white p-6 rounded-lg shadow-xl mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Resumo do Pedido #{{ pedido.id }}</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-700">
+                <div>
+                    <p class="text-sm font-semibold uppercase text-gray-500">Status</p>
+                    <p class="text-lg font-bold text-green-700">{{ pedido.status }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold uppercase text-gray-500">Data do Pedido</p>
+                    <p class="text-lg">{{ pedido.data_criacao|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold uppercase text-gray-500">Total Pago</p>
+                    <p class="text-2xl font-extrabold text-gray-900">R$ {{ pedido.total|default:0.00 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-xl mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Itens Comprados</h2>
+            
+            <div class="space-y-4">
+                {% for item in pedido.itens %}
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <div class="flex items-center space-x-4">
+                            <div>
+                                <p class="text-lg font-medium">{{ item.joia.nome }}</p>
+                                <p class="text-sm text-gray-500">Quantidade: {{ item.quantidade }}</p>
+                            </div>
+                        </div>
+                        <div class="text-lg font-semibold">R$ {{ item.subtotal|default:0.00 }}</div>
+                    </div>
+                {% empty %}
+                    <p class="text-gray-500">Nenhum item encontrado neste pedido.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Endereço de Entrega</h2>
+            <address class="not-italic text-gray-700 space-y-1">
+                <p>{{ pedido.endereco_entrega.linha1 }}</p>
+                <p>{{ pedido.endereco_entrega.cidade }}, {{ pedido.endereco_entrega.estado }}</p>
+                <p>CEP: {{ pedido.endereco_entrega.cep }}</p>
+            </address>
+        </div>
+
+        <div class="mt-10 text-center">
+            <a href="{% url 'lista_joias' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                Continuar Comprando
+            </a>
+        </div>
+    </div>
+{% endblock %}

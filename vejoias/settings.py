@@ -3,8 +3,14 @@ Configurações para o projeto Vê Jóias.
 """
 
 import os
+import sys
+from decouple import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pathlib import Path
 from dotenv import load_dotenv
+
+
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -25,6 +31,9 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
+# Define o nosso modelo de usuário personalizado como o modelo de autenticação padrão.
+AUTH_USER_MODEL = 'infrastructure.Usuario'
+
 
 # ====================================================================
 # APLICAÇÕES INSTALADAS
@@ -38,16 +47,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    'vejoias.infrastructure',
-    'vejoias.presentation',
-    'vejoias.core',
+    # Aplicações de Terceiros (Primeiro)
     'rest_framework', 
     'drf_spectacular',
-    'rest_framework_simplejwt', # Adiciona o Django REST Framework
-
+    'rest_framework_simplejwt', 
     
-    # Nossas aplicações
-    'vejoias.infrastructure.apps.InfrastructureConfig', # Adiciona nossa app
+    # Nossas Aplicações (Por último)
+    # A sintaxe de importação é a correta, o problema é a ordem.
+    'vejoias.infrastructure.apps.InfrastructureConfig',
+    'vejoias.presentation.apps.PresentationConfig', 
+    'vejoias.core.apps.CoreConfig',
 ]
 
 
@@ -93,11 +102,11 @@ WSGI_APPLICATION = 'vejoias.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'HOST': os.environ.get('DB_HOST', 'db'), # O host é 'db' para o Docker Compose
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'NAME': os.environ.get('POSTGRES_DB'),
+        'USER': os.environ.get('POSTGRES_USER'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+        'HOST': os.environ.get('POSTGRES_HOST'),
+        'PORT': int(os.environ.get('POSTGRES_PORT')),
     }
 }
 
@@ -106,8 +115,7 @@ DATABASES = {
 # AUTENTICAÇÃO E VALIDAÇÃO DE SENHA
 # ====================================================================
 
-# Define o nosso modelo de usuário personalizado como o modelo de autenticação padrão.
-AUTH_USER_MODEL = 'infrastructure.Usuario'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -137,6 +145,30 @@ USE_I18N = True
 
 USE_TZ = True
 
+# ====================================================================
+# CONFIGURAÇÕES DE SERVIÇOS EXTERNOS (Evolution-API/WhatsApp)
+# ====================================================================
+# Evolution-API (WhatsApp Gateway)
+EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL', 'http://evolution_api:8080/v1')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY')
+EVOLUTION_API_INSTANCE = os.environ.get('EVOLUTION_API_INSTANCE', 'default')
+EVOLUTION_INSTANCE_NAME = config('EVOLUTION_INSTANCE_NAME', default='TEMP_INSTANCE_NAME')
+# O Evolution-API geralmente usa a porta 8080, e 'evolution_api' é o nome do serviço Docker.
+
+# ====================================================================
+# CONFIGURAÇÕES DE E-MAIL
+# ====================================================================
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Credenciais SMTP
+EMAIL_HOST = os.environ.get('EMAIL_HOST') # Ex: smtp.gmail.com
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+# Lê 'True' ou 'False' (case insensitive) do .env
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true' 
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@vejoias.com')
+
 
 # ====================================================================
 # ARQUIVOS ESTÁTICOS (CSS, JavaScript, Imagens)
@@ -149,11 +181,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ====================================================================
-# CONFIGURAÇÕES DE E-MAIL
-# ====================================================================
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API do Vê Joias',
@@ -169,5 +196,61 @@ REST_FRAMEWORK = {
     )
 }
 
-# Configurações de E-mail (Modo de Desenvolvimento)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# ====================================================================
+# CONFIGURAÇÕES DE E-MAIL (PRODUÇÃO)
+# ====================================================================
+# Mude para SMTPBackend em produção para enviar e-mails reais
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend') 
+# Se você quiser o console backend em dev e SMTP em prod, use a linha acima e defina a variável no .env/.prod
+
+EMAIL_HOST = os.environ.get('EMAIL_HOST') # Ex: smtp.gmail.com ou smtp.sendgrid.net
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587)) # 587 para TLS/STARTTLS ou 465 para SSL
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@vejoias.com')
+# Define o caminho para a sua view de login personalizada.
+# O Django agora saberá para onde redirecionar quando um login for necessário.
+LOGIN_URL = '/login/'
+
+# Adicionalmente, você pode definir para onde o usuário deve ir após um login bem-sucedido
+# (Opcional: se não for definido, ele usará a página padrão /accounts/profile/)
+LOGIN_REDIRECT_URL = '/'
+
+# ====================================================================
+# CONFIGURAÇÕES DE LOGGING (PRODUÇÃO)
+# ====================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'WARNING',  # Registra a partir de WARNING
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/var/log/vejoias/django.log', # Mude este caminho para o seu ambiente
+            'maxBytes': 1024 * 1024 * 5, # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'WARNING',
+            'propagate': True,
+        },
+        'vejoias.core': { # Logs da sua lógica de negócio
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# Se estiver em DEBUG=False e o host for permitido, o Django usará este LOGGING.

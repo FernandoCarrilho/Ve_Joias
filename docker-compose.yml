@@ -1,6 +1,3 @@
-# vejoias/docker-compose.yml
-
-
 services:
   web:
     # Constrói a imagem a partir do Dockerfile na pasta atual
@@ -19,26 +16,70 @@ services:
     restart: always
     # Garante que o serviço 'db' seja iniciado antes do 'web'
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     # Sobrescreve o CMD do Dockerfile para rodar o servidor
     # Certifique-se de que o host do banco de dados está correto (o nome do serviço)
     command: python manage.py runserver 0.0.0.0:8000
 
   db:
     # Usa a imagem oficial do PostgreSQL no Docker Hub
-    image: postgres:14-alpine
+    image: postgres:15
     # Define as variáveis de ambiente para o banco de dados
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     # Mapeia a porta padrão do PostgreSQL (5432)
     ports:
       - "5432:5432"
     # Persiste os dados do banco em um volume, evitando a perda de dados ao parar o contêiner
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      # Verifica se o PostgreSQL está pronto para conexões
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: >
+      redis-server --port 6379 --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: always
+    ports:
+      - 6379:6379
+
+  evolution-api:
+    container_name: evolution_api
+    image: atendai/evolution-api:v2.1.1
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - evolution_instances:/evolution/instances
+    environment:
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started 
+      web:
+        condition: service_started
+      
 
 # Define os volumes que serão usados pelos serviços
 volumes:
   postgres_data:
+  redis_data:
+  evolution_instances:

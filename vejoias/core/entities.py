@@ -4,7 +4,6 @@ from typing import List, Optional
 
 # ====================================================================
 # ENTIDADES: Representam os objetos de negócio do domínio.
-# Não devem ter lógica de framework, como campos de banco de dados.
 # ====================================================================
 
 @dataclass
@@ -52,9 +51,11 @@ class Endereco:
 
 @dataclass
 class Pedido:
-    id: Optional[int] = None
     usuario: Usuario
     endereco_entrega: Endereco
+    id: Optional[int] = None
     status: str = "PENDENTE"
     transacao_id: Optional[str] = None
+    url_pagamento: str = ""
     total: Decimal = Decimal('0.00')
+    items: list = field(default_factory=list)

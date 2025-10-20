@@ -113,6 +113,7 @@ class Endereco(models.Model):
     cidade = models.CharField(_("cidade"), max_length=100)
     estado = models.CharField(_("estado"), max_length=20)
     referencia = models.TextField(_("referência"), blank=True, null=True)
+    principal = models.BooleanField(_("principal"), default=False)
 
     def __str__(self):
         return f"{self.rua}, {self.numero} - {self.cidade}"
@@ -134,6 +135,7 @@ class Carrinho(models.Model):
         verbose_name=_("usuário"),
         help_text=_("O carrinho pertence a um único usuário.")
     )
+    data_criacao = models.DateTimeField(_("data de criação"), auto_now_add=True)
 
     def __str__(self):
         return f"Carrinho de {self.usuario.username}"
@@ -168,7 +170,7 @@ class ItemCarrinho(models.Model):
     class Meta:
         verbose_name = _("item de carrinho")
         verbose_name_plural = _("itens de carrinho")
-        unique_together = ('carrinho', 'jóia')
+        unique_together = ('carrinho', 'joia')
 
 
 class Pedido(models.Model):
@@ -240,5 +242,5 @@ class ItemPedido(models.Model):
     class Meta:
         verbose_name = _("item de pedido")
         verbose_name_plural = _("itens de pedido")
-        unique_together = ('pedido', 'jóia')
+        unique_together = ('pedido', 'joia')
         ordering = ['pedido']

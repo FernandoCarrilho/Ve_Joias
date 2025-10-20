@@ -3,6 +3,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 
 
@@ -12,6 +13,16 @@ urlpatterns = [
     
     # URL para o painel de administração padrão do Django
     path('admin/', admin.site.urls),
+
+     # 1. Rota para o arquivo Schema YAML (gerado automaticamente)
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    
+    # 2. Rota para a interface de usuário do Swagger (visualização interativa)
+    path('api/docs/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    
+    # Opcional: Rota para a interface Redoc
+    path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+
 
     # ====================================================================
     # NOVAS URLS PARA RECUPERAÇÃO DE SENHA
@@ -35,4 +46,5 @@ urlpatterns = [
     path('reset/done/',
          auth_views.PasswordResetCompleteView.as_view(template_name='password_reset/password_reset_complete.html'),
          name='password_reset_complete'),
+         
 ]

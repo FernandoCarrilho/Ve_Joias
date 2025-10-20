@@ -12,7 +12,7 @@
 <body class="bg-gray-100 font-sans">
     <nav class="bg-blue-600 text-white p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="{% url 'lista_joias' %}" class="text-xl font-bold">Vê Joias</a>
+            <a href="{% url 'lista_joias' %}" class="text-xl font-bold">Vê Jóias</a>
             <div class="flex items-center space-x-6">
                 {% if user.is_authenticated %}
                     <span class="hidden md:inline">Olá, {{ user.username }}</span>
@@ -32,7 +32,8 @@
             </div>
         </div>
     </nav>
-    <main class="container mx-auto mt-8 p-4">
+    
+    <main class="container mx-auto mt-8 p-4"> 
         {% if messages %}
         <ul class="messages">
             {% for message in messages %}
@@ -42,14 +43,11 @@
         {% endif %}
 
         {% block content %}
-        {% endblock %}
-    </main>
-    <main class="container mx-auto mt-8 p-4">
-        {% block content %}
-        {% endblock %}
-    </main>
-
+        {% endblock content %}
+        
+    </main> 
     {% block scripts %}
-    {% endblock %}
+    {% endblock scripts %}
+
 </body>
 </html>

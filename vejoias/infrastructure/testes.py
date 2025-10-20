@@ -2,10 +2,11 @@ from django.test import TestCase
 from django.core.exceptions import ObjectDoesNotExist
 
 # Importamos as classes que queremos testar
-from infrastructure.models import Joia as JoiaModel
-from infrastructure.repositories import JoiaRepository
-from core.entities import Joia as JoiaEntity
-from core.exceptions import ItemNaoEncontradoError
+from vejoias.infrastructure.models import Joia as JoiaModel
+from vejoias.infrastructure.repositories import JoiaRepository
+from vejoias.core.entities import Joia as JoiaEntity
+from vejoias.core.exceptions import ItemNaoEncontradoError
+from vejoias.core.use_cases import AtualizarStatusPedido
 
 # A classe de teste herda do TestCase do Django, que prepara o banco de dados de teste
 class JoiaRepositoryTestCase(TestCase):

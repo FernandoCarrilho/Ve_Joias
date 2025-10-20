@@ -7,6 +7,10 @@ FROM python:3.11-slim AS builder
 # Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
+# Remove as linhas duplicadas/inapropriadas nesta etapa.
+# O diretório de log não precisa ser criado no 'builder'.
+# Apenas copia o código e instala dependências
+
 # Copia o arquivo de dependências primeiro para aproveitar o cache do Docker
 COPY requirements.txt .
 
@@ -22,6 +26,9 @@ WORKDIR /app
 
 # Copia as dependências já instaladas da etapa 'builder'
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# AÇÃO CRUCIAL: Cria o diretório de log na imagem FINAL
+RUN mkdir -p /var/log/vejoias && chmod -R 777 /var/log/vejoias
 
 # Copia o código-fonte da aplicação para o contêiner
 COPY . .

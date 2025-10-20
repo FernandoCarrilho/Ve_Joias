@@ -3,11 +3,12 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import get_user_model
 from decimal import Decimal
-from core.entities import Endereco
-from infrastructure.models import Joia as JoiaModel
-from core.exceptions import EstoqueInsuficienteError
-from core.entities import Carrinho
+from vejoias.core.entities import Endereco
+from vejoias.infrastructure.models import Joia as JoiaModel
+from vejoias.core.exceptions import EstoqueInsuficienteError
+from vejoias.core.entities import Carrinho
 import re
 
 # ====================================================================
@@ -32,7 +33,7 @@ class CheckoutForm(forms.Form):
     Formulário completo para os dados do checkout.
     """
     # Campos de Endereço
-    cep = forms.CharField(label='CEP', max_length=9)
+    cep = forms.CharField(label='CEP', max_length=10)
     rua = forms.CharField(label='Endereço Completo', max_length=255)
     numero = forms.CharField(label='Número', max_length=10)
     bairro = forms.CharField(label='Bairro', max_length=100)
@@ -43,13 +44,50 @@ class CheckoutForm(forms.Form):
     # Campo de Pagamento
     TIPO_PAGAMENTO_CHOICES = [
         ('pix', 'Pix'),
-        ('cartao', 'Cartão de Crédito')
+        ('cartao', 'Cartão de Crédito'),
+        ('boleto', 'Boleto Bancário'),
     ]
     tipo_pagamento = forms.ChoiceField(
         label='Método de Pagamento', 
         choices=TIPO_PAGAMENTO_CHOICES, 
         widget=forms.RadioSelect
     )
+    telefone_whatsapp = forms.CharField(
+        max_length=15, 
+        label='Telefone WhatsApp',
+        help_text='Use o formato internacional (DDI + DDD + Número) para receber a confirmação.'
+    )
+    def clean_telefone_whatsapp(self):
+        """
+        Remove caracteres não numéricos e valida o formato do telefone para o WhatsApp.
+        """
+        telefone = self.cleaned_data['telefone_whatsapp']
+        
+        # 1. Limpeza: Remove todos os caracteres não numéricos (espaços, parênteses, traços, etc.)
+        numero_limpo = re.sub(r'\D', '', telefone)
+        
+        # 2. Validação Mínima:
+        # Padrão brasileiro (10 a 11 dígitos, mais o DDI 55). 
+        # Ex: 55 + DDD (2 dígitos) + Número (8 ou 9 dígitos) = 12 ou 13 dígitos
+        if not (12 <= len(numero_limpo) <= 13):
+            raise forms.ValidationError(
+                "O número de telefone deve ter entre 12 e 13 dígitos no formato DDI+DDD+Número (Ex: 5511987654321)."
+            )
+
+        # 3. Adiciona o DDI brasileiro (55) se o usuário não o incluiu (para DDD+Número, 10 ou 11 dígitos)
+        # Se o número tiver 10 ou 11 dígitos, assumimos que é um telefone nacional (DD + Número)
+        # e adicionamos o 55 no início.
+        if len(numero_limpo) in [10, 11] and numero_limpo.startswith(('1', '2', '3', '4', '5', '6', '7', '8', '9')):
+             numero_limpo = '55' + numero_limpo
+             
+        # 4. Revalidação final
+        if not (numero_limpo.startswith('55') and 12 <= len(numero_limpo) <= 13):
+             raise forms.ValidationError(
+                "O número de telefone final não está no formato internacional válido (Ex: 5511987654321)."
+            )
+
+        # Retorna o número limpo e padronizado, pronto para o Evolution-API
+        return numero_limpo
 
     def clean_cep(self):
         cep = self.cleaned_data.get('cep')
@@ -59,6 +97,7 @@ class CheckoutForm(forms.Form):
 
     def to_endereco_entity(self) -> Endereco:
         return Endereco(
+            telefone=self.cleaned_data['telefone_whatsapp'],
             cep=self.cleaned_data.get('cep'),
             rua=self.cleaned_data.get('rua'),
             numero=self.cleaned_data.get('numero'),
@@ -76,10 +115,8 @@ class RegistroForm(UserCreationForm):
     Formulário de registro que usa a classe base do Django.
     """
     class Meta(UserCreationForm.Meta):
-        # A classe Meta herda do UserCreationForm, mas podemos adicionar
-        # campos extras aqui se precisarmos no futuro.
-        # Por enquanto, apenas o nome do modelo de usuário é suficiente.
-        model = 'infrastructure.Usuario'
+        model = get_user_model()
+        fields = UserCreationForm.Meta.fields + ('email',) 
 
 class LoginForm(AuthenticationForm):
     """

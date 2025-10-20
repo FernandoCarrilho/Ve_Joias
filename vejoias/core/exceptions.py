@@ -6,6 +6,8 @@ class ApplicationError(Exception):
     """
     pass
 
+
+
 class EstoqueInsuficienteError(ApplicationError):
     """
     Exceção levantada quando um item não pode ser adicionado ao carrinho
@@ -19,6 +21,8 @@ class EstoqueInsuficienteError(ApplicationError):
             f"{message} Joia ID: {joia_id}. Solicitado: {quantidade_solicitada}, Disponível: {estoque_atual}."
         )
 
+
+
 class ItemNaoEncontradoError(ApplicationError):
     """
     Exceção levantada quando um item específico não é encontrado (catálogo, carrinho, etc.).
@@ -30,11 +34,15 @@ class ItemNaoEncontradoError(ApplicationError):
             f"{tipo} com ID: {item_id} não foi encontrado."
         )
 
+
+
 class CarrinhoVazioError(ApplicationError):
     """
     Exceção levantada quando uma operação de checkout é tentada com um carrinho vazio.
     """
     pass # A mensagem padrão é suficiente aqui.
+
+
 
 class PagamentoFalhouError(ApplicationError):
     """
@@ -47,6 +55,7 @@ class PagamentoFalhouError(ApplicationError):
             f"{message} Detalhes da falha: {detalhes}"
         )
 
+
 class DadosInvalidosError(ApplicationError):
     """
     Exceção para erros de validação que não são tratados pelo Serializer.
@@ -56,3 +65,12 @@ class DadosInvalidosError(ApplicationError):
         super().__init__(
             f"{message} Campos afetados: {', '.join(campos_errados)}"
         )
+
+
+class StatusInvalidoError(ApplicationError):
+    """Exceção levantada quando o status fornecido é inválido."""
+    pass
+
+class PedidoNaoEncontradoError(ApplicationError):
+    """Exceção levantada quando um pedido não é encontrado pelo ID ou transação."""
+    pass

@@ -1,9 +1,10 @@
 from typing import List, Optional
 from django.core.exceptions import ObjectDoesNotExist
 
-from infrastructure import models
-from core import entities
-from core.exceptions import ItemNaoEncontradoError, CarrinhoVazioError
+from vejoias.infrastructure import models
+from vejoias.core import entities
+from vejoias.core.entities import Carrinho as CarrinhoEntity
+from vejoias.core.exceptions import ItemNaoEncontradoError, CarrinhoVazioError
 
 # ====================================================================
 # REPOSITÓRIOS: Adaptadores que implementam os protocolos da camada de domínio.
@@ -36,6 +37,11 @@ class JoiaRepository:
             for attr, value in self._to_model_data(joia_entity).items():
                 setattr(joia_model, attr, value)
             joia_model.save()
+
+    def buscar_todos(self) -> List[entities.Joia]:
+        """Busca todas as joias (disponíveis ou não) e retorna a lista de entidades."""
+        joia_models = models.Joia.objects.all()
+        return [self._to_entity(model) for model in joia_models]
 
     def _to_entity(self, joia_model: models.Joia) -> entities.Joia:
         """Converte um modelo Django para uma entidade de domínio."""
@@ -93,6 +99,7 @@ class CarrinhoRepository:
 
         carrinho_model = models.Carrinho.objects.get(pk=carrinho_entity.id)
         
+        
         # Sincroniza os itens do carrinho
         carrinho_model.itens.all().delete()
         for item_entity in carrinho_entity.itens:
@@ -122,6 +129,19 @@ class CarrinhoRepository:
             joia=joia_entity,
             quantidade=item_model.quantidade
         )
+    
+    def buscar_todos(self) -> List[entities.Joia]:
+        """Busca todas as joias (disponíveis ou não) e retorna a lista de entidades."""
+        
+        # Para fins de administração, geralmente queremos ver todas as joias,
+        # independentemente da disponibilidade.
+        joia_models = models.Joia.objects.all() 
+        
+        # Se você preferir apenas as disponíveis:
+        # joia_models = models.Joia.objects.filter(disponivel=True)
+
+        return [self._to_entity(model) for model in joia_models]
+
 
 
 class PedidoRepository:
