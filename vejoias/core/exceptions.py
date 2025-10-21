@@ -18,7 +18,7 @@ class EstoqueInsuficienteError(ApplicationError):
         self.estoque_atual = estoque_atual
         self.quantidade_solicitada = quantidade_solicitada
         super().__init__(
-            f"{message} Joia ID: {joia_id}. Solicitado: {quantidade_solicitada}, Disponível: {estoque_atual}."
+            f"{message} Jóia ID: {joia_id}. Solicitado: {quantidade_solicitada}, Disponível: {estoque_atual}."
         )
 
 

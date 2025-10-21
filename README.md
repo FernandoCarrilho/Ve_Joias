@@ -84,3 +84,18 @@ A documentação interativa da API está disponível nos seguintes endpoints:
 | `/api/carrinho/` | `GET`, `POST`, `DELETE` | Manipula o carrinho do usuário | Autenticado (JWT) |
 | `/api/checkout/` | `POST` | Finaliza o pedido | Autenticado (JWT) |
 | `/api/token/` | `POST` | Obtém o token JWT | Pública |
+
+pip install pre-commit
+pre-commit install
+# testar em todos os arquivos (opcional)
+pre-commit run --all-files
+
+## Variáveis de Ambiente
+
+O projeto usa variáveis de ambiente para segredos e configurações. Copie o arquivo de exemplo e ajuste:
+
+```bash
+cp .env.example .env
+# edite .env conforme necessário
+
+

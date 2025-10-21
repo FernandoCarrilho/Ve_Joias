@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes Registrados{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+
+        <!-- Header e Estatísticas -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2 sm:mb-0 flex items-center">
+                <i class="fas fa-users text-pink-600 mr-3"></i>
+                Gestão de Clientes
+            </h1>
+            <div class="flex items-center space-x-3">
+                <span class="text-sm font-medium text-gray-500">Total de Clientes: <span class="text-gray-900 font-semibold">1,245</span></span>
+            </div>
+        </div>
+
+        <!-- Filtros e Busca -->
+        <div class="bg-white p-4 rounded-xl shadow-lg mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-center">
+                
+                <!-- Busca por Nome/Email/Telefone -->
+                <div class="w-full md:w-1/3">
+                    <label for="search" class="sr-only">Buscar Cliente</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input id="search" name="search" type="search" placeholder="Buscar por Nome, Email, Telefone..."
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                    </div>
+                </div>
+
+                <!-- Filtro por Status (Ativo/Inativo/Bloqueado) -->
+                <div class="w-full md:w-1/4">
+                    <label for="status" class="sr-only">Status</label>
+                    <select id="status" name="status"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                        <option value="">Todos os Status</option>
+                        <option value="active">Ativo</option>
+                        <option value="inactive">Inativo (Sem Compras)</option>
+                        <option value="blocked">Bloqueado</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Compras -->
+                <div class="w-full md:w-1/4">
+                    <label for="has_orders" class="sr-only">Com Histórico</label>
+                    <select id="has_orders" name="has_orders"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                        <option value="">Qualquer Histórico</option>
+                        <option value="true">Com Compras</option>
+                        <option value="false">Sem Compras</option>
+                    </select>
+                </div>
+
+                <!-- Botão de Filtrar -->
+                <div class="w-full md:w-auto">
+                    <button type="button"
+                            class="w-full md:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-200 transition duration-150">
+                        <i class="fas fa-filter mr-1"></i> Aplicar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Tabela de Clientes -->
+        <div class="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Nome
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Email
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Pedidos
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Gasto
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cadastro
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ações
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    
+                    <!-- Cliente 1 -->
+                    <tr class="hover:bg-pink-50/50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            João Santos
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            joao.santos@email.com
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                            5
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-pink-600">
+                            R$ 4.567,80
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            15/01/2023
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'admin_client_detail' client_id='JOAO123' %}" class="text-pink-600 hover:text-pink-900 transition duration-150">
+                                <i class="fas fa-eye mr-1"></i> Ver Detalhes
+                            </a>
+                        </td>
+                    </tr>
+                    
+                    <!-- Cliente 2 -->
+                    <tr class="hover:bg-pink-50/50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            Maria Oliveira
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            maria.oli@outro.com
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                            1
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-pink-600">
+                            R$ 899,00
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            22/08/2024
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'admin_client_detail' client_id='MARIA456' %}" class="text-pink-600 hover:text-pink-900 transition duration-150">
+                                <i class="fas fa-eye mr-1"></i> Ver Detalhes
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Cliente 3 (Sem compras) -->
+                    <tr class="hover:bg-pink-50/50 transition duration-150 opacity-80">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            Pedro Almeida
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            pedro.a@mail.com
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
+                            0
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-400">
+                            R$ 0,00
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            01/10/2025
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'admin_client_detail' client_id='PEDRO789' %}" class="text-pink-600 hover:text-pink-900 transition duration-150">
+                                <i class="fas fa-eye mr-1"></i> Ver Detalhes
+                            </a>
+                        </td>
+                    </tr>
+                    
+                    <!-- Adicionar mais clientes aqui... -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação (Placeholder) -->
+        <div class="mt-6 flex justify-between items-center">
+            <p class="text-sm text-gray-600">Mostrando 1 a 20 de 1,245 clientes</p>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <a href="#" aria-current="page" class="z-10 bg-pink-50 border-pink-500 text-pink-600 relative inline-flex items-center px-4 py-2 text-sm font-medium">
+                    1
+                </a>
+                <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 text-sm font-medium">
+                    2
+                </a>
+                <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </nav>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo de Jóias - VeJóias{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-10 max-w-7xl">
+    <h1 class="text-4xl font-extrabold text-gray-900 mb-8 border-b pb-4">
+        <i class="fas fa-gem text-pink-600 mr-2"></i> Nosso Catálogo
+    </h1>
+
+    <!-- Filtros e Busca -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-10 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6">
+        <form method="get" class="flex-grow flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 items-center">
+            <!-- Campo de Busca -->
+            <input type="text" name="busca" placeholder="Buscar joias por nome ou descrição..."
+                   value="{{ busca|default:'' }}"
+                   class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+            
+            <!-- Filtro por Categoria -->
+            <select name="categoria" onchange="this.form.submit()"
+                    class="w-full md:w-auto p-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                <option value="">Todas as Categorias</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.slug }}" 
+                            {% if categoria.slug == categoria_selecionada %}selected{% endif %}>
+                        {{ categoria.nome }}
+                    </option>
+                {% endfor %}
+                <option value="destaques" {% if categoria_selecionada == 'destaques' %}selected{% endif %}>
+                    ✨ Destaques
+                </option>
+            </select>
+
+            <button type="submit" class="w-full md:w-auto bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition duration-300 font-semibold shadow-md">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            
+            {% if busca or categoria_selecionada %}
+                <a href="{% url 'catalogo' %}" class="w-full md:w-auto bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition duration-300 flex items-center justify-center font-medium">
+                    Limpar Filtros
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Resultados da Busca/Listagem -->
+    {% if joias %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+            {% for joia in joias %}
+            <div class="bg-white rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transform hover:scale-[1.02] transition duration-300 border border-gray-100">
+                <a href="{% url 'detalhe_joia' joia.pk %}" class="block">
+                    <!-- Imagem da Joia -->
+                    <div class="w-full h-48 bg-gray-100 overflow-hidden">
+                        <img src="{{ joia.imagem_url|default:'https://placehold.co/600x400/f0d8e4/880e4f?text=Joia' }}" 
+                             alt="{{ joia.nome }}" 
+                             class="w-full h-full object-cover transition duration-300 hover:opacity-90" 
+                             onerror="this.onerror=null;this.src='https://placehold.co/600x400/f0d8e4/880e4f?text=Joia';" />
+                    </div>
+
+                    <!-- Detalhes -->
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold text-gray-900 truncate">{{ joia.nome }}</h2>
+                        <p class="text-sm text-gray-500 mb-2">{{ joia.categoria.nome }}</p>
+                        
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-xl font-extrabold text-pink-600">
+                                R$ {{ joia.preco|floatformat:2 }}
+                            </span>
+                            <span class="text-xs font-medium px-2 py-1 rounded-full 
+                                {% if joia.estoque > 10 %}bg-green-100 text-green-700{% elif joia.estoque > 0 %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                {% if joia.estoque > 0 %}{{ joia.estoque }} em estoque{% else %}Esgotado{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </a>
+                
+                {% if joia.estoque > 0 %}
+                <div class="p-4 pt-0">
+                    <!-- Botão Adicionar ao Carrinho (Será implementado nas Views de Vendas) -->
+                    <button class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition duration-200 shadow-md"
+                            onclick="adicionarAoCarrinho({{ joia.pk }})">
+                        <i class="fas fa-cart-plus mr-1"></i> Adicionar
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Paginação Placeholder -->
+        {% if is_paginated %}
+        <div class="mt-12 flex justify-center">
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {# Aqui vai a lógica real de paginação do Django #}
+                <span class="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-50 rounded-md">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </nav>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <!-- Mensagem de Sem Resultados -->
+        <div class="text-center bg-white p-16 rounded-xl shadow-lg border-2 border-dashed border-gray-200">
+            <i class="fas fa-search-minus text-6xl text-gray-400 mb-4"></i>
+            <p class="text-2xl font-semibold mb-2">Nenhuma jóia corresponde aos filtros.</p>
+            <p class="text-gray-500">Tente buscar por um termo diferente ou limpe os filtros.</p>
+            <a href="{% url 'catalogo' %}" class="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-pink-600 bg-pink-100 hover:bg-pink-200 transition duration-300">
+                Ver Todo o Catálogo
+            </a>
+        </div>
+    {% endif %}
+
+</div>
+
+<script>
+    // Placeholder para a função de adicionar ao carrinho (a ser implementada via AJAX nas views de vendas)
+    function adicionarAoCarrinho(joiaId) {
+        alert('A função de adicionar ao carrinho será implementada no módulo de Vendas! Joia ID: ' + joiaId);
+        // Implementação futura: Envio de requisição POST/PUT para a API do Carrinho
+    }
+</script>
+{% endblock %}

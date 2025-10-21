@@ -27,8 +27,8 @@ services:
     image: postgres:15
     # Define as variáveis de ambiente para o banco de dados
     environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE}
-      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     # Mapeia a porta padrão do PostgreSQL (5432)
     ports:
@@ -73,8 +73,6 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started 
-      web:
         condition: service_started
       
 

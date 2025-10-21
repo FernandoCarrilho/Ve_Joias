@@ -1,120 +1,120 @@
 # vejoias/presentation/admin.py
+# Configuração da interface administrativa do Django para os modelos do Ve_Joias.
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.utils.html import format_html
-from django.db.models import Sum 
+from django.contrib.auth.models import User
+from vejoias.infrastructure.models import (
+    Joia, Categoria, Subcategoria, Pedido, ItemPedido, PerfilUsuario
+)
 
-# Importa todos os Models da nossa camada de Infraestrutura
-from vejoias.infrastructure import models 
+# ====================================================================
+# 1. ADMIN PERSONALIZADO PARA USUÁRIOS E PERFIL
+# ====================================================================
+
+class PerfilUsuarioInline(admin.StackedInline):
+    """Permite editar o PerfilUsuario diretamente na página do User."""
+    model = PerfilUsuario
+    can_delete = False
+    verbose_name_plural = 'Perfil'
+    fields = ('telefone', 'endereco', 'is_admin')
+
+class UserAdmin(BaseUserAdmin):
+    """Customização do modelo User do Django para incluir o PerfilUsuario."""
+    inlines = (PerfilUsuarioInline,)
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'get_is_admin')
+    
+    # Adiciona 'is_admin' nos campos de permissão
+    def get_is_admin(self, obj):
+        return obj.perfilusuario.is_admin
+    get_is_admin.short_description = 'É Admin'
+    get_is_admin.boolean = True
+
+# Desregistra o User padrão e registra o customizado
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
+
+# ====================================================================
+# 2. ADMIN PARA CATEGORIAS
+# ====================================================================
+
+class SubcategoriaInline(admin.TabularInline):
+    """Permite editar Subcategorias diretamente na página da Categoria."""
+    model = Subcategoria
+    extra = 1
+    prepopulated_fields = {'slug': ('nome',)}
+
+@admin.register(Categoria)
+class CategoriaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'slug')
+    inlines = [SubcategoriaInline]
+    prepopulated_fields = {'slug': ('nome',)}
+    search_fields = ('nome',)
+
+@admin.register(Subcategoria)
+class SubcategoriaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'categoria_pai', 'slug')
+    list_filter = ('categoria_pai',)
+    prepopulated_fields = {'slug': ('nome',)}
+    search_fields = ('nome',)
 
 
-# -----------------------------------------------------
-# 1. Joia (Produto)
-# -----------------------------------------------------
+# ====================================================================
+# 3. ADMIN PARA PRODUTOS (JOIAS)
+# ====================================================================
 
-@admin.register(models.Joia)
+@admin.register(Joia)
 class JoiaAdmin(admin.ModelAdmin):
-    """Configuração de exibição da Joia no Django Admin."""
-    
-    # CORREÇÃO E122: 'preco' incluído em list_display para que list_editable funcione
-    list_display = ('nome', 'categoria', 'subcategoria', 'preco_formatado', 'preco', 'estoque', 'disponivel', 'visualizar_no_site')
-    list_filter = ('disponivel', 'categoria', 'subcategoria', 'genero')
-    search_fields = ('nome', 'descricao', 'tamanho')
-    list_editable = ('preco', 'estoque', 'disponivel')
-    list_display_links = ('nome',)
-    
-    def preco_formatado(self, obj):
-        return f"R$ {obj.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    preco_formatado.short_description = 'Preço (R$)'
-
-    def visualizar_no_site(self, obj):
-        if obj.id:
-            return format_html('<a href="/joia/{}/" target="_blank">Ver Produto</a>', obj.id)
-        return "N/A"
-    visualizar_no_site.short_description = 'Link'
-
-
-# -----------------------------------------------------
-# 2. Carrinho e Itens (Inlines)
-# -----------------------------------------------------
-
-class ItemCarrinhoInline(admin.TabularInline):
-    """Permite editar ItemCarrinho dentro da página do Carrinho."""
-    model = models.ItemCarrinho
-    extra = 0
-    fields = ('joia', 'quantidade') 
-    readonly_fields = ()
-
-
-@admin.register(models.Carrinho)
-class CarrinhoAdmin(admin.ModelAdmin):
-    """Configuração de exibição do Carrinho no Django Admin."""
-    # CORRIGIDO E108/E116: 'data_criacao' agora existe no modelo Carrinho
-    list_display = ('id', 'usuario', 'total_itens', 'data_criacao')
-    list_filter = ('data_criacao',)
-    search_fields = ('usuario__username', 'usuario__email')
-    inlines = [ItemCarrinhoInline] 
-    
-    def total_itens(self, obj):
-        return obj.itens.aggregate(total=Sum('quantidade'))['total'] or 0 
-    total_itens.short_description = 'Total de Itens'
-
-
-# -----------------------------------------------------
-# 3. Pedido e Itens
-# -----------------------------------------------------
-
-class ItemPedidoInline(admin.TabularInline):
-    """Permite ver os itens de um pedido dentro da página do Pedido."""
-    model = models.ItemPedido
-    extra = 0
-    readonly_fields = ('joia', 'quantidade', 'preco_unitario_no_pedido') 
-    fields = ('joia', 'quantidade', 'preco_unitario_no_pedido')
-    can_delete = False 
-    
-    def preco_unitario_no_pedido(self, obj):
-        return f"R$ {obj.preco_unitario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    preco_unitario_no_pedido.short_description = 'Preço Unitário'
-
-
-@admin.register(models.Pedido)
-class PedidoAdmin(admin.ModelAdmin):
-    """Configuração de exibição de Pedido no Django Admin."""
-    # CORRIGIDO E035/E108/E116: Mudando 'data_pedido' para 'data_criacao' (nome real do campo)
-    list_display = ('id', 'usuario', 'data_criacao', 'status', 'valor_total')
-    list_filter = ('status', 'data_criacao')
-    search_fields = ('usuario__username', 'id')
-    # O valor_total precisa de um método get_valor_total() no modelo Pedido
-    readonly_fields = ('data_criacao', 'total') 
-    inlines = [ItemPedidoInline] 
-    
-    def valor_total(self, obj):
-        # Usamos o campo 'total' do modelo Pedido
-        return f"R$ {obj.total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    valor_total.short_description = 'Valor Total'
-
-
-@admin.register(models.Endereco)
-class EnderecoAdmin(admin.ModelAdmin):
-    """Configuração de exibição de Endereço no Django Admin."""
-    # CORRIGIDO E108/E116: 'principal' agora existe no modelo Endereco
-    list_display = ('usuario', 'cep', 'cidade', 'estado', 'principal')
-    list_filter = ('estado', 'principal')
-    search_fields = ('usuario__username', 'cep', 'cidade')
-
-@admin.register(models.Usuario)
-class UsuarioAdmin(BaseUserAdmin):
-    """Configuração para o modelo de usuário (extende as funcionalidades padrão do Django)."""
-    
-    # CORREÇÃO E012: Removendo o campo 'email' do fieldsets
-    fieldsets = BaseUserAdmin.fieldsets + (
-        (
-            'Informações de Contato Adicionais', 
-            {'fields': ('telefone', 'tipo_usuario')} # Adicionando campos customizados
-        ),
+    list_display = ('nome', 'preco', 'estoque', 'categoria', 'subcategoria', 'ativa', 'data_criacao')
+    list_filter = ('ativa', 'categoria', 'subcategoria', 'material')
+    search_fields = ('nome', 'descricao', 'id')
+    ordering = ('nome',)
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'descricao', 'preco', 'estoque', 'ativa', 'imagem_url')
+        }),
+        ('Classificação', {
+            'fields': ('categoria', 'subcategoria', 'material', 'peso_gramas'),
+        }),
     )
 
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'telefone', 'tipo_usuario')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups', 'tipo_usuario')
-    search_fields = ('username', 'first_name', 'last_name', 'email', 'telefone')
+
+# ====================================================================
+# 4. ADMIN PARA PEDIDOS
+# ====================================================================
+
+class ItemPedidoInline(admin.TabularInline):
+    """Exibe os itens comprados dentro do detalhe do Pedido."""
+    model = ItemPedido
+    raw_id_fields = ('joia',)
+    readonly_fields = ('nome_joia', 'preco_unitario', 'quantidade')
+    extra = 0
+    can_delete = False
+
+@admin.register(Pedido)
+class PedidoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'usuario', 'data_criacao', 'total', 'status', 'tipo_pagamento')
+    list_filter = ('status', 'tipo_pagamento', 'data_criacao')
+    search_fields = ('id', 'usuario__username', 'endereco_entrega')
+    date_hierarchy = 'data_criacao'
+    inlines = [ItemPedidoInline]
+    readonly_fields = ('usuario', 'data_criacao', 'total', 'endereco_entrega', 'tipo_pagamento', 'id_transacao')
+
+    def save_model(self, request, obj, form, change):
+        """Permite que o administrador altere apenas o status do pedido."""
+        if not change:
+            # Não permitir criação manual de pedidos (apenas por checkout)
+            super().save_model(request, obj, form, change)
+        
+        # Obter o Pedido original para verificar se o status mudou
+        if change:
+            original_pedido = Pedido.objects.get(pk=obj.pk)
+            # A única alteração permitida deve ser no status.
+            if original_pedido.status != obj.status:
+                # Lógica para notificar o cliente sobre a mudança de status, se necessário
+                pass 
+            super().save_model(request, obj, form, change)
+
+    def has_add_permission(self, request):
+        """Impedir a criação de pedidos pela interface do Admin."""
+        return False

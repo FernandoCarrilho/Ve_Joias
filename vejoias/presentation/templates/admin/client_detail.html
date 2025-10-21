@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Cliente: João Santos{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header e Ações -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2 sm:mb-0 flex items-center">
+                <i class="fas fa-user-circle text-pink-600 mr-3"></i>
+                Detalhes do Cliente: João Santos
+            </h1>
+            <div class="flex items-center space-x-3">
+                <button type="button" 
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 transition duration-150">
+                    <i class="fas fa-envelope mr-1"></i> Enviar Email
+                </button>
+                <button type="button" 
+                        class="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg shadow-sm hover:bg-red-50 transition duration-150">
+                    <i class="fas fa-lock-open mr-1"></i> Bloquear Cliente
+                </button>
+            </div>
+        </div>
+
+        <!-- Layout de Colunas: Dados (Esquerda) e Estatísticas (Direita) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Coluna Principal (2/3) - Informações de Contato e Endereço -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- 1. Dados Pessoais e Contato -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-address-card text-pink-500 mr-2"></i> Contato e Identificação
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="font-medium text-gray-500">ID do Cliente:</p>
+                            <p class="font-semibold text-gray-900">JOAO123</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Nome Completo:</p>
+                            <p class="font-semibold text-gray-900">João Santos</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Email:</p>
+                            <p class="font-semibold text-pink-600">joao.santos@email.com</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Telefone:</p>
+                            <p class="font-semibold text-gray-900">(11) 98765-4321</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">CPF/CNPJ:</p>
+                            <p class="font-semibold text-gray-900">123.456.789-00</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Data de Cadastro:</p>
+                            <p class="font-semibold text-gray-900">15/01/2023</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Endereço Principal -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center justify-between">
+                        <span class="flex items-center"><i class="fas fa-map-marker-alt text-pink-500 mr-2"></i> Endereço Principal</span>
+                        <button class="text-xs text-pink-600 hover:text-pink-700 font-medium">
+                             <i class="fas fa-edit mr-1"></i> Editar
+                        </button>
+                    </h2>
+                    <div class="text-sm space-y-1">
+                        <p class="font-semibold text-gray-900">Rua da Prata, 123 - Apto 5</p>
+                        <p class="text-gray-700">Centro, São Paulo - SP</p>
+                        <p class="text-gray-700">CEP: 01000-000</p>
+                        <p class="text-gray-500 mt-2 italic">Endereço padrão para entregas.</p>
+                    </div>
+                </div>
+
+                <!-- 3. Histórico de Pedidos -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-history text-pink-500 mr-2"></i> Histórico de Pedidos (5 Total)
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <!-- Pedido 1 (Mais Recente) -->
+                        <div class="flex justify-between items-center border p-3 rounded-lg hover:bg-gray-50 transition duration-150">
+                            <div>
+                                <a href="{% url 'admin_order_detail' order_id='20240902' %}" class="font-semibold text-sm text-pink-600 hover:underline">
+                                    Pedido #20240902
+                                </a>
+                                <p class="text-xs text-gray-500">20/10/2025 | R$ 1.250,50</p>
+                            </div>
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Pendente
+                            </span>
+                        </div>
+                        
+                        <!-- Pedido 2 -->
+                        <div class="flex justify-between items-center border p-3 rounded-lg hover:bg-gray-50 transition duration-150">
+                            <div>
+                                <a href="{% url 'admin_order_detail' order_id='20240815' %}" class="font-semibold text-sm text-pink-600 hover:underline">
+                                    Pedido #20240815
+                                </a>
+                                <p class="text-xs text-gray-500">15/08/2025 | R$ 990,00</p>
+                            </div>
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Entregue
+                            </span>
+                        </div>
+                        
+                        <!-- Pedido 3 -->
+                        <div class="flex justify-between items-center border p-3 rounded-lg hover:bg-gray-50 transition duration-150">
+                            <div>
+                                <a href="{% url 'admin_order_detail' order_id='20240701' %}" class="font-semibold text-sm text-pink-600 hover:underline">
+                                    Pedido #20240701
+                                </a>
+                                <p class="text-xs text-gray-500">01/07/2025 | R$ 2.027,30</p>
+                            </div>
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Entregue
+                            </span>
+                        </div>
+
+                        <div class="text-center pt-2">
+                            <a href="{% url 'admin_orders_list' client_id='JOAO123' %}" class="text-sm text-pink-600 hover:text-pink-700 font-medium">
+                                Ver Todos os 5 Pedidos <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna Lateral (1/3) - Estatísticas e Pontuação -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- 4. Estatísticas de Compra -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-pink-500 mr-2"></i> Resumo de Compras
+                    </h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <span class="text-gray-600 text-sm">Total Gasto:</span>
+                            <span class="text-xl font-bold text-pink-600">R$ 4.567,80</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 text-sm">Média por Pedido:</span>
+                            <span class="font-semibold text-gray-900">R$ 913,56</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 text-sm">Última Compra:</span>
+                            <span class="font-semibold text-gray-900">20/10/2025</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 text-sm">Produto Favorito:</span>
+                            <span class="font-semibold text-gray-900">Anel Solitário</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Status da Conta / Fidelidade (Placeholder) -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 text-center">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center justify-center">
+                        <i class="fas fa-medal text-yellow-500 mr-2"></i> Nível Fidelidade
+                    </h2>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-2xl font-extrabold text-yellow-700">VIP Diamante</p>
+                        <p class="text-sm text-gray-600 mt-1">Acumulou mais de R$ 4.000 em compras.</p>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4">Próximo Nível: Lendário (R$ 10.000)</p>
+                </div>
+
+            </div> <!-- Fim Coluna Lateral -->
+        </div> <!-- Fim Grid -->
+        
+        <!-- Botão Voltar -->
+        <div class="mt-8 text-center">
+             <a href="{% url 'admin_clients_list' %}" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition duration-150">
+                <i class="fas fa-arrow-left mr-2"></i> Voltar para a Lista de Clientes
+            </a>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

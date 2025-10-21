@@ -1,0 +1,788 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Vejoias</title>
+    <!-- Carregamento do Tailwind CSS para estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração da fonte Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        /* Estilo para a aba ativa */
+        .tab-active {
+            border-bottom: 3px solid #ec4899; /* pink-600 */
+            color: #ec4899;
+            font-weight: 700;
+        }
+    </style>
+    <!-- Ícones Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header Fixo do Admin com Navegação por Abas -->
+    <header class="bg-gray-800 text-white shadow-xl sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="./home.html" class="text-3xl font-extrabold text-pink-400 tracking-wider">
+                <i class="fas fa-hammer mr-2"></i> Painel Admin
+            </a>
+            <nav class="flex items-center space-x-4">
+                <span id="admin-info" class="text-sm text-gray-400 hidden sm:inline">Carregando...</span>
+                <button id="logout-button" class="px-4 py-2 bg-pink-600 rounded-lg font-semibold hover:bg-pink-700 transition hidden">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </nav>
+        </div>
+        
+        <!-- Navegação por Abas -->
+        <div class="bg-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8">
+                    <button id="tab-products" data-tab="products" class="tab-button py-3 text-sm font-medium text-gray-300 hover:text-white transition duration-150 tab-active">
+                        <i class="fas fa-box"></i> Produtos
+                    </button>
+                    <button id="tab-orders" data-tab="orders" class="tab-button py-3 text-sm font-medium text-gray-300 hover:text-white transition duration-150">
+                        <i class="fas fa-receipt"></i> Pedidos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 min-h-[85vh]">
+
+        <!-- Mensagem de Autenticação/Status -->
+        <div id="auth-status" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg hidden" role="alert">
+            <p class="font-bold">Acesso Negado</p>
+            <p>Você não tem permissão para acessar esta área administrativa. Faça login como administrador.</p>
+        </div>
+
+        <div id="admin-content" class="hidden">
+            <h1 class="text-4xl font-bold text-gray-900 mb-8" id="main-title">Gerenciamento de Produtos</h1>
+
+            <!-- CONTEÚDO DA ABA DE PRODUTOS -->
+            <div id="tab-content-products">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                    <!-- Formulário de Cadastro/Edição de Produto -->
+                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-2xl h-fit sticky top-20">
+                        <h2 id="form-title" class="text-2xl font-bold text-pink-600 mb-4 border-b pb-3">Novo Produto</h2>
+                        
+                        <form id="product-form" class="space-y-4">
+                            <input type="hidden" id="product-id">
+
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700">Nome da Joia</label>
+                                <input type="text" id="name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500">
+                            </div>
+
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                                <textarea id="description" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500"></textarea>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="price" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
+                                    <input type="number" id="price" required min="0.01" step="0.01" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500">
+                                </div>
+                                <div>
+                                    <label for="stock" class="block text-sm font-medium text-gray-700">Estoque</label>
+                                    <input type="number" id="stock" required min="0" step="1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                                    <select id="category" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500 bg-white">
+                                        <option value="">Selecione</option>
+                                        <option value="Aneis">Anéis</option>
+                                        <option value="Colares">Colares</option>
+                                        <option value="Brincos">Brincos</option>
+                                        <option value="Pulseiras">Pulseiras</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                                    <select id="status" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500 bg-white">
+                                        <option value="active">Ativo (Visível)</option>
+                                        <option value="draft">Rascunho (Oculto)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="imageUrl" class="block text-sm font-medium text-gray-700">URL da Imagem</label>
+                                <input type="url" id="imageUrl" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-3 focus:border-pink-500 focus:ring-pink-500" placeholder="https://exemplo.com/joia.jpg">
+                            </div>
+
+                            <button type="submit" id="save-product-btn" class="w-full py-3 bg-pink-600 text-white font-bold rounded-lg shadow-md hover:bg-pink-700 transition transform hover:scale-[1.01]">
+                                <i class="fas fa-save mr-2"></i> Cadastrar Produto
+                            </button>
+                            <button type="button" id="cancel-edit-btn" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-lg shadow-md hover:bg-gray-300 transition hidden">
+                                <i class="fas fa-times mr-2"></i> Cancelar Edição
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabela de Produtos -->
+                    <div class="lg:col-span-2">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-3">Estoque e Produtos Cadastrados</h2>
+                        
+                        <div class="bg-white rounded-xl shadow-xl overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-4 text-sm text-gray-500 text-center">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Carregando produtos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CONTEÚDO DA ABA DE PEDIDOS -->
+            <div id="tab-content-orders" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-3">Pedidos Recentes</h2>
+                
+                <div class="bg-white rounded-xl shadow-xl overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID do Pedido</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-sm text-gray-500 text-center">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Carregando pedidos...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="no-orders-state" class="hidden bg-white p-12 text-center shadow-xl rounded-xl mt-8">
+                    <i class="fas fa-truck-loading text-8xl text-pink-200 mb-6"></i>
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-3">Nenhum pedido recente</h2>
+                    <p class="text-gray-500">Aguardando as primeiras vendas!</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal de Confirmação e Status -->
+        <div id="status-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden" onclick="closeModal()">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg mx-4 transform transition-all duration-300" onclick="event.stopPropagation()">
+                <h3 id="modal-title" class="text-xl font-bold mb-3"></h3>
+                <p id="modal-message" class="text-gray-700 mb-4 overflow-auto max-h-96"></p>
+                <div class="flex justify-end space-x-3">
+                    <button id="modal-primary-btn" onclick="executeModalAction()" class="py-2 px-4 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition hidden">Confirmar</button>
+                    <button onclick="closeModal()" class="py-2 px-4 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Simples -->
+    <footer class="bg-gray-800 text-white mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-pink-400 font-semibold mb-2">Vejoias Admin &copy; 2024</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, setLogLevel,
+            addDoc, updateDoc,
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('Debug');
+
+        // Variáveis globais obrigatórias
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const ADMIN_UID = 'default-admin-uid'; // ID fixo do administrador
+
+        // Inicialização do Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let currentUserId = null; 
+        let currentAction = null; 
+        let currentTab = 'products'; // Estado da aba
+
+        // --- Referências DOM ---
+        const authStatusDiv = document.getElementById('auth-status');
+        const adminContentDiv = document.getElementById('admin-content');
+        const adminInfoSpan = document.getElementById('admin-info');
+        const logoutButton = document.getElementById('logout-button');
+        const mainTitle = document.getElementById('main-title');
+        
+        // Tabs
+        const tabContentProducts = document.getElementById('tab-content-products');
+        const tabContentOrders = document.getElementById('tab-content-orders');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        
+        // Formulário Produto
+        const productForm = document.getElementById('product-form');
+        const formTitle = document.getElementById('form-title');
+        const saveProductBtn = document.getElementById('save-product-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const productIdInput = document.getElementById('product-id');
+        const nameInput = document.getElementById('name');
+        const descriptionInput = document.getElementById('description');
+        const priceInput = document.getElementById('price');
+        const stockInput = document.getElementById('stock');
+        const categoryInput = document.getElementById('category');
+        const statusInput = document.getElementById('status');
+        const imageUrlInput = document.getElementById('imageUrl');
+        
+        // Tabela Produto
+        const productsTableBody = document.getElementById('products-table-body');
+        
+        // Tabela Pedidos
+        const ordersTableBody = document.getElementById('orders-table-body');
+        const noOrdersState = document.getElementById('no-orders-state');
+
+        // Modals
+        const statusModal = document.getElementById('status-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalPrimaryBtn = document.getElementById('modal-primary-btn');
+
+        // --- Funções Auxiliares Comuns ---
+
+        /**
+         * Exibe o modal de status/confirmação.
+         */
+        function showModal(title, message, type = 'info', confirmCallback = null) {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message; // Usar innerHTML para permitir formatação de itens
+            
+            let color = 'text-gray-800';
+            if (type === 'error') color = 'text-red-600';
+            if (type === 'success') color = 'text-green-600';
+            if (type === 'confirm') color = 'text-orange-600';
+
+            modalTitle.className = `text-xl font-bold mb-3 ${color}`;
+            statusModal.classList.remove('hidden');
+
+            if (confirmCallback) {
+                currentAction = confirmCallback;
+                modalPrimaryBtn.classList.remove('hidden');
+                modalPrimaryBtn.textContent = (type === 'confirm' ? 'Confirmar' : 'Ação');
+            } else {
+                currentAction = null;
+                modalPrimaryBtn.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Fecha o modal de status.
+         */
+        window.closeModal = function() {
+            statusModal.classList.add('hidden');
+            currentAction = null;
+        }
+        
+        /**
+         * Executa a ação confirmada pelo modal.
+         */
+        window.executeModalAction = function() {
+            if (currentAction) {
+                currentAction();
+                closeModal();
+            }
+        }
+
+        /**
+         * Formata um número como moeda BRL.
+         * @param {number} value
+         * @returns {string}
+         */
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+        
+        /**
+         * Formata uma data para exibição.
+         * @param {string} isoString
+         * @returns {string}
+         */
+        function formatOrderDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // --- Funções de Referência Firestore ---
+
+        /**
+         * Retorna a referência da coleção de produtos do Admin (Privada).
+         */
+        function getProductsCollectionRef() {
+            // Caminho: /artifacts/{appId}/users/{ADMIN_UID}/products
+            return collection(db, `artifacts/${appId}/users/${ADMIN_UID}/products`);
+        }
+
+        /**
+         * Retorna a referência da coleção de pedidos (Pública).
+         */
+        function getOrdersCollectionRef() {
+            // Caminho: /artifacts/{appId}/public/data/orders
+            return collection(db, `artifacts/${appId}/public/data/orders`);
+        }
+
+        // ===================================
+        // PRODUTOS (EXISTENTE - REUSADO/ADAPTADO)
+        // ===================================
+
+        /**
+         * Retorna o HTML para uma linha da tabela de produtos.
+         */
+        function createProductRow(product) {
+            const statusColor = product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+            const statusText = product.status === 'active' ? 'Ativo' : 'Rascunho';
+            // ... (restante da função createProductRow é a mesma) ...
+             return `
+                <tr data-id="${product.id}" class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div class="flex items-center">
+                            <img src="${product.imageUrl || 'https://placehold.co/40x40/f9a8d4/FFFFFF?text=J'}" 
+                                 class="h-10 w-10 rounded-full mr-3 object-cover"
+                                 onerror="this.onerror=null;this.src='https://placehold.co/40x40/f9a8d4/FFFFFF?text=J';">
+                            <div>
+                                <div class="text-sm font-semibold">${product.name}</div>
+                                <div class="text-xs text-gray-500">${product.category}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCurrency(product.price)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">${product.stock}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button data-id="${product.id}" class="edit-btn text-indigo-600 hover:text-indigo-900 transition">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button data-id="${product.id}" data-name="${product.name}" class="delete-btn text-red-600 hover:text-red-900 transition ml-2">
+                            <i class="fas fa-trash"></i> Deletar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        /**
+         * Listener em tempo real da coleção de produtos.
+         */
+        function startProductsListener() {
+            onSnapshot(getProductsCollectionRef(), (snapshot) => {
+                const products = [];
+                snapshot.forEach(doc => {
+                    products.push({ id: doc.id, ...doc.data() });
+                });
+
+                productsTableBody.innerHTML = '';
+
+                if (products.length === 0) {
+                    productsTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-lg text-gray-500 text-center">
+                                <i class="fas fa-box-open text-pink-300 text-4xl mb-3"></i>
+                                <p>Nenhum produto cadastrado ainda.</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                products.forEach(product => {
+                    productsTableBody.innerHTML += createProductRow(product);
+                });
+
+                // Adicionar listeners para os botões de ação
+                productsTableBody.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const productId = e.currentTarget.dataset.id;
+                        const productToEdit = products.find(p => p.id === productId);
+                        if (productToEdit) loadProductForEdit(productToEdit);
+                    });
+                });
+
+                productsTableBody.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const productId = e.currentTarget.dataset.id;
+                        const productName = e.currentTarget.dataset.name;
+                        
+                        showModal(
+                            "Confirmar Exclusão",
+                            `Tem certeza que deseja deletar o produto "${productName}"? Esta ação é irreversível.`,
+                            'confirm',
+                            () => deleteProduct(productId, productName)
+                        );
+                    });
+                });
+
+            }, (error) => {
+                console.error("Erro no listener de produtos:", error);
+            });
+        }
+        
+        /**
+         * Funções de Formulário (loadProductForEdit, resetForm, productForm.addEventListener, deleteProduct)
+         * são idênticas à versão anterior e permanecem as mesmas.
+         */
+        function loadProductForEdit(product) {
+            productIdInput.value = product.id;
+            nameInput.value = product.name;
+            descriptionInput.value = product.description || '';
+            priceInput.value = product.price;
+            stockInput.value = product.stock;
+            categoryInput.value = product.category;
+            statusInput.value = product.status;
+            imageUrlInput.value = product.imageUrl || '';
+            
+            formTitle.textContent = `Editar: ${product.name}`;
+            saveProductBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Atualizar Produto';
+            cancelEditBtn.classList.remove('hidden');
+        }
+        function resetForm() {
+            productForm.reset();
+            productIdInput.value = '';
+            formTitle.textContent = 'Novo Produto';
+            saveProductBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Cadastrar Produto';
+            cancelEditBtn.classList.add('hidden');
+        }
+        async function deleteProduct(productId, productName) {
+            try {
+                const productRef = doc(getProductsCollectionRef(), productId);
+                await deleteDoc(productRef);
+                showModal("Sucesso", `Produto "${productName}" deletado com sucesso.`, 'success');
+                resetForm(); 
+            } catch (error) {
+                console.error("Erro ao deletar produto:", error);
+                showModal("Erro", `Falha ao deletar o produto: ${error.message}`, 'error');
+            }
+        }
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productId = productIdInput.value;
+            const isEditing = !!productId;
+            const productData = {
+                name: nameInput.value,
+                description: descriptionInput.value,
+                price: parseFloat(priceInput.value),
+                stock: parseInt(stockInput.value, 10),
+                category: categoryInput.value,
+                status: statusInput.value,
+                imageUrl: imageUrlInput.value || null,
+            };
+
+            saveProductBtn.disabled = true;
+            saveProductBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Salvando...';
+
+            try {
+                if (isEditing) {
+                    const productRef = doc(getProductsCollectionRef(), productId);
+                    await updateDoc(productRef, productData);
+                    showModal("Sucesso", `Produto "${productData.name}" atualizado com sucesso.`, 'success');
+                } else {
+                    await addDoc(getProductsCollectionRef(), productData);
+                    showModal("Sucesso", `Produto "${productData.name}" cadastrado com sucesso.`, 'success');
+                }
+                resetForm(); 
+            } catch (error) {
+                console.error("Erro ao salvar produto:", error);
+                showModal("Erro", `Falha ao salvar o produto: ${error.message}`, 'error');
+            } finally {
+                saveProductBtn.disabled = false;
+                saveProductBtn.innerHTML = isEditing 
+                    ? '<i class="fas fa-sync-alt mr-2"></i> Atualizar Produto' 
+                    : '<i class="fas fa-save mr-2"></i> Cadastrar Produto';
+            }
+        });
+        cancelEditBtn.addEventListener('click', resetForm);
+
+
+        // ===================================
+        // PEDIDOS (NOVO)
+        // ===================================
+        
+        /**
+         * Retorna a cor e o texto para o status do pedido.
+         */
+        function getStatusDetails(status) {
+            switch (status) {
+                case 'Pending':
+                    return { text: 'Pendente', class: 'bg-red-100 text-red-800' };
+                case 'Processing':
+                    return { text: 'Em Processamento', class: 'bg-yellow-100 text-yellow-800' };
+                case 'Shipped':
+                    return { text: 'Enviado', class: 'bg-blue-100 text-blue-800' };
+                case 'Delivered':
+                    return { text: 'Entregue', class: 'bg-green-100 text-green-800' };
+                default:
+                    return { text: status, class: 'bg-gray-100 text-gray-800' };
+            }
+        }
+        
+        /**
+         * Cria o HTML para a linha de um pedido.
+         */
+        function createOrderRow(order) {
+            const status = getStatusDetails(order.status);
+            
+            return `
+                <tr data-id="${order.id}" class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate max-w-xs">${order.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${order.clientName || 'Cliente Anônimo'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">${formatCurrency(order.totalAmount)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatOrderDate(order.orderDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.class}">
+                            ${status.text}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button data-id="${order.id}" class="view-order-btn text-indigo-600 hover:text-indigo-900 transition">
+                            <i class="fas fa-search-plus"></i> Detalhes
+                        </button>
+                        <select data-id="${order.id}" class="status-select bg-gray-100 p-1 rounded text-sm border-gray-300 ml-2">
+                            <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pendente</option>
+                            <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Em Processamento</option>
+                            <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Enviado</option>
+                            <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Entregue</option>
+                        </select>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        /**
+         * Exibe os detalhes de um pedido no modal.
+         */
+        function viewOrderDetails(order) {
+            const itemsHtml = order.items.map(item => `
+                <li class="flex justify-between py-1 border-b border-gray-100">
+                    <span class="text-gray-700">${item.name} (x${item.quantity})</span>
+                    <span class="font-semibold">${formatCurrency(item.price * item.quantity)}</span>
+                </li>
+            `).join('');
+
+            const message = `
+                <div class="space-y-4">
+                    <p><strong>ID do Cliente:</strong> <span class="text-xs text-gray-500">${order.clientId}</span></p>
+                    <p><strong>Nome:</strong> ${order.clientName}</p>
+                    <p><strong>Email:</strong> ${order.clientEmail}</p>
+                    
+                    <h4 class="font-bold mt-4 border-t pt-3">Endereço de Entrega:</h4>
+                    <p>${order.address.street}, ${order.address.number}</p>
+                    <p>${order.address.city} - ${order.address.state}, CEP: ${order.address.zip}</p>
+
+                    <h4 class="font-bold mt-4 border-t pt-3">Itens (${order.items.length}):</h4>
+                    <ul class="list-none p-0 space-y-1">
+                        ${itemsHtml}
+                    </ul>
+
+                    <h4 class="font-extrabold text-lg pt-2 border-t mt-4">Total do Pedido: ${formatCurrency(order.totalAmount)}</h4>
+                </div>
+            `;
+            
+            showModal(`Detalhes do Pedido ${order.id.substring(0, 8)}...`, message, 'info');
+        }
+
+        /**
+         * Atualiza o status de um pedido no Firestore.
+         */
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                const orderRef = doc(getOrdersCollectionRef(), orderId);
+                await updateDoc(orderRef, { status: newStatus });
+                // Feedback silencioso (o onSnapshot atualiza a tabela)
+            } catch (error) {
+                console.error("Erro ao atualizar status do pedido:", error);
+                showModal("Erro", `Falha ao atualizar o status do pedido ${orderId.substring(0, 8)}...`, 'error');
+            }
+        }
+
+        /**
+         * Listener em tempo real da coleção de pedidos.
+         */
+        function startOrdersListener() {
+            // Ordenar por data decrescente (mais recentes primeiro)
+            const qOrders = query(getOrdersCollectionRef()); 
+            
+            onSnapshot(qOrders, (snapshot) => {
+                const orders = [];
+                snapshot.forEach(doc => {
+                    orders.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Ordena em memória por data (o mais recente primeiro)
+                orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); 
+
+                ordersTableBody.innerHTML = '';
+                noOrdersState.classList.add('hidden');
+
+                if (orders.length === 0) {
+                    ordersTableBody.innerHTML = '';
+                    noOrdersState.classList.remove('hidden');
+                    return;
+                }
+
+                orders.forEach(order => {
+                    ordersTableBody.innerHTML += createOrderRow(order);
+                });
+
+                // Adiciona listeners para Detalhes e Status
+                ordersTableBody.querySelectorAll('.view-order-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const orderId = e.currentTarget.dataset.id;
+                        const order = orders.find(o => o.id === orderId);
+                        if (order) viewOrderDetails(order);
+                    });
+                });
+                
+                ordersTableBody.querySelectorAll('.status-select').forEach(select => {
+                    select.addEventListener('change', (e) => {
+                        const orderId = e.target.dataset.id;
+                        const newStatus = e.target.value;
+                        updateOrderStatus(orderId, newStatus);
+                    });
+                });
+
+            }, (error) => {
+                console.error("Erro no listener de pedidos:", error);
+                ordersTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-sm text-red-500 text-center">Erro ao carregar pedidos.</td></tr>`;
+            });
+        }
+        
+        // ===================================
+        // NAVEGAÇÃO POR ABAS
+        // ===================================
+        
+        /**
+         * Função para alternar entre as abas.
+         */
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Oculta/Exibe Conteúdo
+            tabContentProducts.classList.toggle('hidden', tabName !== 'products');
+            tabContentOrders.classList.toggle('hidden', tabName !== 'orders');
+            
+            // Atualiza Título
+            mainTitle.textContent = tabName === 'products' ? 'Gerenciamento de Produtos' : 'Gerenciamento de Pedidos';
+            
+            // Atualiza Estilo das Abas
+            tabButtons.forEach(btn => {
+                btn.classList.remove('tab-active');
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('tab-active');
+                }
+            });
+            
+            // Inicia o Listener apropriado se a aba for ativada
+            if (tabName === 'orders') {
+                startOrdersListener();
+            } else if (tabName === 'products') {
+                startProductsListener();
+            }
+        }
+        
+        // Adiciona listeners para os botões das abas
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+
+        // ===================================
+        // INICIALIZAÇÃO
+        // ===================================
+
+        async function initialize() {
+            // Tenta autenticar via token customizado (para o ambiente Canvas)
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } catch (error) {
+                    console.error('Erro na autenticação Firebase:', error);
+                }
+            } else {
+                 try {
+                     await signInAnonymously(auth);
+                 } catch (e) {
+                     console.error("Falha ao tentar login anônimo", e);
+                 }
+            }
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    adminInfoSpan.textContent = `ID: ${user.uid}`;
+                    logoutButton.classList.remove('hidden');
+
+                    if (currentUserId === ADMIN_UID) {
+                        // ACESSO ADMINISTRATIVO CONCEDIDO
+                        authStatusDiv.classList.add('hidden');
+                        adminContentDiv.classList.remove('hidden');
+                        // Inicia o listener da aba padrão (Produtos)
+                        switchTab('products'); 
+                    } else {
+                        // ACESSO NEGADO
+                        authStatusDiv.classList.remove('hidden');
+                        authStatusDiv.innerHTML = `<p class="font-bold">Acesso Negado</p><p>Sua ID (${currentUserId}) não é a ID de administrador (${ADMIN_UID}).</p>`;
+                        adminContentDiv.classList.add('hidden');
+                    }
+                } else {
+                    // SEM USUÁRIO LOGADO
+                    currentUserId = null;
+                    adminInfoSpan.textContent = 'Não Autenticado';
+                    logoutButton.classList.add('hidden');
+                    authStatusDiv.classList.remove('hidden');
+                    adminContentDiv.classList.add('hidden');
+                }
+            });
+
+            logoutButton.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                    window.location.reload(); 
+                } catch (error) {
+                    console.error("Erro ao fazer logout:", error);
+                    showModal("Erro", "Não foi possível desconectar.", 'error');
+                }
+            });
+        }
+        
+        initialize();
+    </script>
+</body>
+</html>

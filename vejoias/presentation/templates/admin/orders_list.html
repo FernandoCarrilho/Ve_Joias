@@ -1,0 +1,386 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos | Vejóias Admin</title>
+    <!-- Carregamento do Tailwind CSS para estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração da fonte Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- Ícones Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Navbar Administrativa -->
+    <nav class="bg-pink-600 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="#" class="text-2xl font-extrabold text-white tracking-wider">Vejóias Admin</a>
+                <div class="flex items-center space-x-4">
+                    <a href="./dashboard.html" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg">
+                        <i class="fas fa-chart-line mr-1"></i> Dashboard
+                    </a>
+                    <a href="./products_list.html" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg">
+                        <i class="fas fa-box-open mr-1"></i> Produtos
+                    </a>
+                    <a href="#" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg bg-pink-700/50">
+                        <i class="fas fa-receipt mr-1"></i> Pedidos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-10">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-extrabold text-gray-800">Gestão de Pedidos</h1>
+            <!-- Botão para Adicionar Pedido (Mock, apenas para simulação) -->
+            <button id="add-order-btn" class="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-300 transform hover:scale-105">
+                <i class="fas fa-plus mr-2"></i> Simular Novo Pedido
+            </button>
+        </div>
+
+        <!-- Filtros e Busca (Mock) -->
+        <div class="bg-white rounded-xl shadow-md p-4 mb-6 flex space-x-4">
+            <input type="text" placeholder="Buscar por Cliente ou ID do Pedido..." class="flex-grow p-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+            <select class="p-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500">
+                <option value="all">Todos Status</option>
+                <option value="pending">Pendente</option>
+                <option value="processing">Em Processamento</option>
+                <option value="shipped">Enviado</option>
+                <option value="delivered">Entregue</option>
+                <option value="cancelled">Cancelado</option>
+            </select>
+        </div>
+
+        <!-- Tabela de Pedidos -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID do Pedido</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Linhas de pedidos serão injetadas aqui -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado de Carregamento/Vazio -->
+            <div id="loading-spinner" class="col-span-full text-center py-20">
+                <i class="fas fa-spinner fa-spin text-4xl text-pink-500 mb-4"></i>
+                <p class="text-lg text-gray-600">Carregando pedidos...</p>
+            </div>
+            
+            <div id="empty-state" class="text-center py-20 hidden">
+                <i class="fas fa-receipt text-4xl text-gray-400 mb-4"></i>
+                <p class="text-lg text-gray-600">Nenhum pedido encontrado. Simule um pedido para começar!</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Confirmação (para evitar alert()) -->
+    <div id="status-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4">Confirmar Mudança de Status</h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">Cancelar</button>
+                <button id="modal-confirm" class="px-4 py-2 bg-pink-600 text-white font-semibold rounded-lg hover:bg-pink-700 transition duration-150">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('Debug');
+
+        // Variáveis globais obrigatórias
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        // Inicialização do Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null; // ID do Admin
+        const ADMIN_USER_ID = 'default-admin-uid'; // ID fixo usado para buscar os dados
+
+        // --- Referências DOM ---
+        const ordersTableBody = document.getElementById('orders-table-body');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const emptyState = document.getElementById('empty-state');
+        const addOrderBtn = document.getElementById('add-order-btn');
+        
+        // Modal
+        const statusModal = document.getElementById('status-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCancel = document.getElementById('modal-cancel');
+        const modalConfirm = document.getElementById('modal-confirm');
+
+        // Gerador de ID Simples para Mockup
+        let orderIdCounter = 1000;
+
+        /**
+         * Retorna a referência da coleção de Pedidos (privada para o admin).
+         */
+        function getOrdersCollectionRef() {
+            // Os pedidos são armazenados na área privada do admin para gerenciamento.
+            return collection(db, `artifacts/${appId}/users/${ADMIN_USER_ID}/orders`);
+        }
+
+        /**
+         * Retorna a classe de estilo para o status.
+         * @param {string} status - O status do pedido.
+         */
+        function getStatusBadge(status) {
+            let color = '';
+            let text = '';
+            switch (status) {
+                case 'pending':
+                    color = 'bg-yellow-100 text-yellow-800';
+                    text = 'Pendente';
+                    break;
+                case 'processing':
+                    color = 'bg-blue-100 text-blue-800';
+                    text = 'Processando';
+                    break;
+                case 'shipped':
+                    color = 'bg-indigo-100 text-indigo-800';
+                    text = 'Enviado';
+                    break;
+                case 'delivered':
+                    color = 'bg-green-100 text-green-800';
+                    text = 'Entregue';
+                    break;
+                case 'cancelled':
+                    color = 'bg-red-100 text-red-800';
+                    text = 'Cancelado';
+                    break;
+                default:
+                    color = 'bg-gray-100 text-gray-800';
+                    text = 'Desconhecido';
+            }
+            return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color}">${text}</span>`;
+        }
+
+        /**
+         * Renderiza uma linha na tabela de pedidos.
+         * @param {Object} order - Dados do pedido.
+         * @param {string} id - ID do documento Firestore.
+         */
+        function renderOrderRow(order, id) {
+            const row = document.createElement('tr');
+            row.id = `order-${id}`;
+            const date = order.date ? new Date(order.date).toLocaleDateString('pt-BR') : 'N/A';
+            const total = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
+
+            // Array de opções de status para o <select>
+            const statusOptions = [
+                { value: 'pending', text: 'Pendente' },
+                { value: 'processing', text: 'Processando' },
+                { value: 'shipped', text: 'Enviado' },
+                { value: 'delivered', text: 'Entregue' },
+                { value: 'cancelled', text: 'Cancelado' }
+            ];
+
+            const optionsHtml = statusOptions.map(option => 
+                `<option value="${option.value}" ${order.status === option.value ? 'selected' : ''}>${option.text}</option>`
+            ).join('');
+
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#${order.orderId}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${order.customerName}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-pink-600">${total}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${date}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    ${getStatusBadge(order.status)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <select id="status-select-${id}" data-order-id="${id}" class="status-select p-2 border border-gray-300 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500 bg-white">
+                        ${optionsHtml}
+                    </select>
+                </td>
+            `;
+
+            // Adiciona listener de mudança no status
+            const statusSelect = row.querySelector('.status-select');
+            statusSelect.addEventListener('change', (e) => {
+                const newStatus = e.target.value;
+                showConfirmationModal(id, order.orderId, newStatus);
+            });
+            
+            return row;
+        }
+        
+        /**
+         * Exibe o modal de confirmação para mudança de status.
+         */
+        function showConfirmationModal(docId, orderNumber, newStatus) {
+            modalTitle.textContent = `Mudar Status do Pedido #${orderNumber}`;
+            modalMessage.innerHTML = `Você tem certeza que deseja alterar o status deste pedido para: 
+                                      <span class="font-bold uppercase">${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}</span>?`;
+            
+            // Limpa listeners antigos
+            modalConfirm.replaceWith(modalConfirm.cloneNode(true));
+            const newModalConfirm = document.getElementById('modal-confirm');
+            
+            newModalConfirm.addEventListener('click', () => {
+                updateOrderStatus(docId, newStatus);
+                statusModal.classList.add('hidden');
+                statusModal.classList.remove('flex');
+            });
+
+            modalCancel.onclick = () => {
+                // Se cancelar, reverte o select para o status original
+                const originalStatus = ordersTableBody.querySelector(`#status-select-${docId}`).dataset.originalStatus;
+                ordersTableBody.querySelector(`#status-select-${docId}`).value = originalStatus;
+                statusModal.classList.add('hidden');
+                statusModal.classList.remove('flex');
+            };
+
+            // Guarda o status atual no select antes de abrir o modal (para reverter se cancelar)
+            ordersTableBody.querySelector(`#status-select-${docId}`).dataset.originalStatus = 
+                ordersTableBody.querySelector(`#status-select-${docId}`).value;
+
+            statusModal.classList.add('flex');
+            statusModal.classList.remove('hidden');
+        }
+
+        /**
+         * Atualiza o status do pedido no Firestore.
+         * @param {string} docId - ID do documento Firestore.
+         * @param {string} newStatus - Novo status.
+         */
+        async function updateOrderStatus(docId, newStatus) {
+            try {
+                const orderRef = doc(db, `artifacts/${appId}/users/${ADMIN_USER_ID}/orders/${docId}`);
+                await updateDoc(orderRef, {
+                    status: newStatus,
+                    updatedAt: new Date().getTime()
+                });
+                console.log(`Status do pedido ${docId} atualizado para: ${newStatus}`);
+                // O onSnapshot cuidará da renderização na tabela.
+            } catch (error) {
+                console.error('Erro ao atualizar status do pedido:', error);
+                // Em caso de erro, avisa e reverte o select
+                alert(`Erro ao atualizar o status: ${error.message}`);
+                const originalStatus = ordersTableBody.querySelector(`#status-select-${docId}`).dataset.originalStatus;
+                ordersTableBody.querySelector(`#status-select-${docId}`).value = originalStatus;
+            }
+        }
+
+        /**
+         * Simula a adição de um novo pedido.
+         */
+        async function simulateNewOrder() {
+            orderIdCounter++;
+            const mockOrder = {
+                orderId: orderIdCounter,
+                customerName: `Cliente Mock ${orderIdCounter}`,
+                total: parseFloat((Math.random() * 500 + 50).toFixed(2)),
+                date: new Date().getTime(),
+                status: 'pending', // Sempre começa como pendente
+                items: [
+                    { name: 'Colar de Coração', qty: 1, price: 120.00 },
+                    { name: 'Anel de Prata', qty: 2, price: 45.00 }
+                ],
+                shippingAddress: 'Rua das Flores, 123, Cidade Exemplo'
+            };
+
+            try {
+                await addDoc(getOrdersCollectionRef(), mockOrder);
+                console.log(`Pedido #${mockOrder.orderId} simulado com sucesso.`);
+            } catch (error) {
+                console.error('Erro ao simular pedido:', error);
+            }
+        }
+        
+        /**
+         * Configura o listener em tempo real (onSnapshot) para carregar os pedidos.
+         */
+        function setupRealtimeOrdersListener() {
+            if (!userId) {
+                console.error('UserId do Admin não definido. Não é possível configurar o listener.');
+                return;
+            }
+
+            const ordersQuery = query(getOrdersCollectionRef());
+
+            onSnapshot(ordersQuery, (snapshot) => {
+                ordersTableBody.innerHTML = '';
+                loadingSpinner.classList.add('hidden');
+
+                if (snapshot.empty) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                    let maxOrderId = orderIdCounter; // Reinicia o contador com o último valor
+                    
+                    snapshot.forEach(doc => {
+                        const order = doc.data();
+                        
+                        // Atualiza o contador para que novos mocks tenham IDs sequenciais
+                        if (order.orderId > maxOrderId) {
+                            maxOrderId = order.orderId;
+                        }
+
+                        // Renderiza a linha na tabela
+                        ordersTableBody.appendChild(renderOrderRow(order, doc.id));
+                    });
+                    
+                    orderIdCounter = maxOrderId;
+                }
+            }, (error) => {
+                console.error('Erro ao receber atualização de pedidos:', error);
+                loadingSpinner.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            });
+        }
+        
+        // Listener do botão de simulação
+        addOrderBtn.addEventListener('click', simulateNewOrder);
+
+        /**
+         * Autentica o usuário (admin) e inicializa a aplicação.
+         */
+        async function initializeAuth() {
+            try {
+                // Autenticação usando o token inicial, que fornecerá o uid do admin
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                // Definimos o ID do usuário para o ID fixo do admin para garantir que a busca funcione
+                userId = auth.currentUser?.uid || ADMIN_USER_ID; 
+                setupRealtimeOrdersListener();
+            } catch (error) {
+                console.error('Erro na autenticação Firebase:', error);
+            }
+        }
+
+        // --- Inicialização ---
+        initializeAuth();
+        
+    </script>
+</body>
+</html>

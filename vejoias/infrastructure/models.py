@@ -1,246 +1,248 @@
+# vejoias/infrastructure/models.py
+# Define os modelos do banco de dados para a camada de infraestrutura.
+
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.utils.translation import gettext_lazy as _
-from django.conf import settings
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from vejoias.core.entities import Endereco as EnderecoEntity
+
+# ====================================================================
+# GERENCIADOR DE USUÁRIOS PERSONALIZADO (Para usar email como login)
+# ====================================================================
+
+class CustomUserManager(BaseUserManager):
+    """
+    Gerenciador de modelos de usuário onde o email é o identificador único
+    para autenticação, em vez dos nomes de usuário.
+    """
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('O e-mail deve ser definido')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        """
+        Cria e salva um Superusuário com o e-mail e senha fornecidos.
+        """
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self.create_user(email, password, **extra_fields)
+
+
+# ====================================================================
+# MODELOS DE DADOS DA APLICAÇÃO
+# ====================================================================
 
 class Usuario(AbstractUser):
     """
-    Modelo de usuário personalizado que herda do AbstractUser do Django
-    para gerenciar a autenticação. É o modelo de infraestrutura para a entidade 'Usuario'.
+    Modelo de Usuário Personalizado que utiliza o campo 'email' como identificador
+    principal para login, em vez de 'username'.
     """
-    class TipoUsuario(models.TextChoices):
-        CLIENTE = 'CLIENTE', _('Cliente')
-        VENDEDOR = 'VENDEDOR', _('Vendedor')
+    # Remove o campo username padrão
+    username = None 
 
-    tipo_usuario = models.CharField(
-        _("tipo de usuário"),
-        max_length=10,
-        choices=TipoUsuario.choices,
-        default=TipoUsuario.CLIENTE,
-        help_text=_("Define o tipo de acesso do usuário no sistema.")
-    )
-    telefone = models.CharField(_("telefone"), max_length=15, blank=True, null=True)
+    # Define o email como único e obrigatório
+    email = models.EmailField('Endereço de E-mail', unique=True)
+    
+    # Campos adicionais do perfil
+    telefone = models.CharField(max_length=15, blank=True, null=True)
+    cpf = models.CharField('CPF', max_length=14, unique=True, blank=True, null=True)
 
-    # Campos de grupos e permissões com related_name únicos para evitar conflitos
-    # com o modelo User padrão do Django.
-    groups = models.ManyToManyField(
-        'auth.Group',
-        related_name='vejoias_usuarios_groups',
-        blank=True,
-        help_text=_('Os grupos aos quais este usuário pertence.')
-    )
-    user_permissions = models.ManyToManyField(
-        'auth.Permission',
-        related_name='vejoias_usuarios_permissions',
-        blank=True,
-        help_text=_('Permissões específicas para este usuário.')
-    )
+    # Campos necessários para login/autenticação
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name'] # Campos que serão perguntados ao criar superuser
 
-    def __str__(self):
-        return self.get_full_name() or self.username
+    # Utiliza o gerenciador de usuários personalizado
+    objects = CustomUserManager()
 
     class Meta:
-        verbose_name = _("usuário")
-        verbose_name_plural = _("usuários")
+        verbose_name = 'Usuário'
+        verbose_name_plural = 'Usuários'
+        # Define a tabela onde este modelo reside
+        db_table = 'usuario'
 
+    def __str__(self):
+        return self.email
 
-class Joia(models.Model):
+class Endereco(models.Model):
     """
-    Modelo para representar uma joia no catálogo.
-    Corresponde à entidade 'Joia' da camada de domínio.
+    Modelo para armazenar endereços de entrega e faturamento.
     """
-    class Categoria(models.TextChoices):
-        OURO = 'OURO', _('Ouro')
-        PRATA = 'PRATA', _('Prata')
-        BIJUTERIA = 'BIJUTERIA', _('Bijuteria')
-        
-    class Subcategoria(models.TextChoices):
-        ANEIS = 'ANEIS', _('Anéis')
-        PULSEIRAS = 'PULSEIRAS', _('Pulseiras')
-        COLARES = 'COLARES', _('Colares')
-        BRINCOS = 'BRINCOS', _('Brincos')
-        TORNOZELEIRAS = 'TORNOZELEIRAS', _('Tornozeleiras')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='enderecos')
+    cep = models.CharField(max_length=10)
+    rua = models.CharField(max_length=255)
+    numero = models.CharField(max_length=10)
+    bairro = models.CharField(max_length=100)
+    cidade = models.CharField(max_length=100)
+    estado = models.CharField(max_length=50)
+    referencia = models.CharField(max_length=255, blank=True, null=True)
+    principal = models.BooleanField(default=False) # Define se é o endereço padrão
 
-    nome = models.CharField(_("nome"), max_length=100)
-    descricao = models.TextField(_("descrição"), blank=True, null=True)
-    preco = models.DecimalField(_("preço"), max_digits=10, decimal_places=2)
-    estoque = models.IntegerField(_("estoque"), default=0)
-    imagem_url = models.URLField(_("URL da imagem"), max_length=500, blank=True, null=True)
-    disponivel = models.BooleanField(_("disponível"), default=True)
+    class Meta:
+        verbose_name = 'Endereço'
+        verbose_name_plural = 'Endereços'
+        db_table = 'endereco'
+
+    def __str__(self):
+        return f"{self.rua}, {self.numero} - {self.cidade}"
     
-    categoria = models.CharField(
-        _("categoria"),
-        max_length=10,
-        choices=Categoria.choices
-    )
-    subcategoria = models.CharField(
-        _("subcategoria"),
-        max_length=15,
-        choices=Subcategoria.choices
-    )
-    
-    tamanho = models.CharField(_("tamanho"), max_length=20, blank=True, null=True)
-    genero = models.CharField(_("gênero"), max_length=20, blank=True, null=True)
-    tipo_publico = models.CharField(_("público"), max_length=20, blank=True, null=True,
-                                  choices=[('ADULTO', 'Adulto'), ('INFANTIL', 'Infantil')])
-    
-    data_cadastro = models.DateTimeField(_("data de cadastro"), auto_now_add=True)
+    def to_entity(self) -> EnderecoEntity:
+        """Converte o Model Django para a Entidade de Domínio."""
+        return EnderecoEntity(
+            cep=self.cep,
+            rua=self.rua,
+            numero=self.numero,
+            bairro=self.bairro,
+            cidade=self.cidade,
+            estado=self.estado,
+            referencia=self.referencia
+        )
+
+
+class Categoria(models.Model):
+    """
+    Modelo para categorias das joias (Ex: Colares, Anéis).
+    """
+    nome = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = 'Categoria'
+        verbose_name_plural = 'Categorias'
+        db_table = 'categoria'
 
     def __str__(self):
         return self.nome
 
+class Subcategoria(models.Model):
+    """
+    Modelo para subcategorias das joias (Ex: Ouro 18K, Prata 925).
+    """
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='subcategorias')
+    nome = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100)
+
     class Meta:
-        verbose_name = _("jóia")
-        verbose_name_plural = _("jóias")
+        verbose_name = 'Subcategoria'
+        verbose_name_plural = 'Subcategorias'
+        unique_together = ('categoria', 'slug')
+        db_table = 'subcategoria'
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.nome}"
+
+
+class Joia(models.Model):
+    """
+    Modelo principal para os produtos da loja.
+    """
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField()
+    preco = models.DecimalField(max_digits=10, decimal_places=2)
+    estoque = models.IntegerField(default=0)
+    disponivel = models.BooleanField(default=True)
+    imagem = models.URLField(max_length=500, blank=True, null=True) # URL da imagem
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='joias')
+    subcategoria = models.ForeignKey(Subcategoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='joias')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Joia'
+        verbose_name_plural = 'Joias'
         ordering = ['nome']
-
-
-class Endereco(models.Model):
-    """
-    Modelo para representar o endereço de entrega do cliente.
-    Corresponde à entidade 'Endereco'.
-    """
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='enderecos',
-        help_text=_("Usuário associado a este endereço.")
-    )
-    cep = models.CharField(_("CEP"), max_length=9)
-    rua = models.CharField(_("rua"), max_length=255)
-    numero = models.CharField(_("número"), max_length=10)
-    bairro = models.CharField(_("bairro"), max_length=100)
-    cidade = models.CharField(_("cidade"), max_length=100)
-    estado = models.CharField(_("estado"), max_length=20)
-    referencia = models.TextField(_("referência"), blank=True, null=True)
-    principal = models.BooleanField(_("principal"), default=False)
+        db_table = 'joia'
 
     def __str__(self):
-        return f"{self.rua}, {self.numero} - {self.cidade}"
-
-    class Meta:
-        verbose_name = _("endereço")
-        verbose_name_plural = _("endereços")
-        
-
-class Carrinho(models.Model):
-    """
-    Modelo para representar o carrinho de compras do usuário.
-    Corresponde à entidade 'Carrinho'.
-    """
-    usuario = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='carrinho',
-        verbose_name=_("usuário"),
-        help_text=_("O carrinho pertence a um único usuário.")
-    )
-    data_criacao = models.DateTimeField(_("data de criação"), auto_now_add=True)
-
-    def __str__(self):
-        return f"Carrinho de {self.usuario.username}"
-
-    class Meta:
-        verbose_name = _("carrinho")
-        verbose_name_plural = _("carrinhos")
-
-
-class ItemCarrinho(models.Model):
-    """
-    Modelo para os itens dentro do carrinho, relacionando-o a uma joia.
-    Corresponde à entidade 'ItemCarrinho'.
-    """
-    carrinho = models.ForeignKey(
-        Carrinho,
-        on_delete=models.CASCADE,
-        related_name='itens',
-        verbose_name=_("carrinho")
-    )
-    joia = models.ForeignKey(
-        Joia,
-        on_delete=models.CASCADE,
-        related_name='itens_carrinho',
-        verbose_name=_("jóia")
-    )
-    quantidade = models.PositiveIntegerField(_("quantidade"))
-
-    def __str__(self):
-        return f"{self.quantidade} x {self.joia.nome} em {self.carrinho.usuario.username}'s carrinho"
-
-    class Meta:
-        verbose_name = _("item de carrinho")
-        verbose_name_plural = _("itens de carrinho")
-        unique_together = ('carrinho', 'joia')
+        return self.nome
+    
+    @property
+    def preco_formatado(self):
+        return f"R$ {self.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 class Pedido(models.Model):
     """
-    Modelo para representar um pedido realizado.
-    Corresponde à entidade 'Pedido'.
+    Modelo para pedidos de compra.
     """
-    class StatusPedido(models.TextChoices):
-        PENDENTE = 'PENDENTE', _('Pendente')
-        PAGO = 'PAGO', _('Pago')
-        EM_ENVIO = 'EM_ENVIO', _('Em Envio')
-        ENTREGUE = 'ENTREGUE', _('Entregue')
-        CANCELADO = 'CANCELADO', _('Cancelado')
+    STATUS_CHOICES = [
+        ('Pendente', 'Pendente de Pagamento'),
+        ('Pago', 'Pago - Processando'),
+        ('Enviado', 'Enviado'),
+        ('Entregue', 'Entregue'),
+        ('Cancelado', 'Cancelado'),
+    ]
 
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='pedidos',
-        verbose_name=_("usuário")
-    )
-    endereco_entrega = models.ForeignKey(
-        Endereco,
-        on_delete=models.PROTECT,  # Mantém o endereço mesmo se o cliente o deletar
-        related_name='pedidos',
-        verbose_name=_("endereço de entrega")
-    )
-    data_criacao = models.DateTimeField(_("data de criação"), auto_now_add=True)
-    status = models.CharField(
-        _("status"),
-        max_length=10,
-        choices=StatusPedido.choices,
-        default=StatusPedido.PENDENTE
-    )
-    total = models.DecimalField(_("total"), max_digits=10, decimal_places=2)
-    transacao_id = models.CharField(_("ID da transação"), max_length=100, blank=True, null=True)
+    PAGAMENTO_CHOICES = [
+        ('pix', 'Pix'),
+        ('cartao', 'Cartão de Crédito'),
+        ('boleto', 'Boleto Bancário'),
+    ]
 
-    def __str__(self):
-        return f"Pedido #{self.id} de {self.usuario.username}"
+    usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, related_name='pedidos')
+    data_pedido = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pendente')
+    total_pedido = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Informações de Pagamento
+    tipo_pagamento = models.CharField(max_length=20, choices=PAGAMENTO_CHOICES, default='pix')
+    
+    # Informações de Endereço (Snapshot)
+    cep_entrega = models.CharField(max_length=10)
+    rua_entrega = models.CharField(max_length=255)
+    numero_entrega = models.CharField(max_length=10)
+    bairro_entrega = models.CharField(max_length=100)
+    cidade_entrega = models.CharField(max_length=100)
+    estado_entrega = models.CharField(max_length=50)
+    referencia_entrega = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Contato para WhatsApp
+    telefone_whatsapp = models.CharField(max_length=15)
 
     class Meta:
-        verbose_name = _("pedido")
-        verbose_name_plural = _("pedidos")
-        ordering = ['-data_criacao']
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
+        ordering = ['-data_pedido']
+        db_table = 'pedido'
+
+    def __str__(self):
+        return f"Pedido {self.id} - {self.usuario.email if self.usuario else 'Convidado'} - {self.status}"
+    
+    @property
+    def total_formatado(self):
+        return f"R$ {self.total_pedido:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 class ItemPedido(models.Model):
     """
-    Modelo para os itens de um pedido.
-    Funciona como uma tabela de junção entre Pedido e Joia.
+    Modelo para os itens contidos em um pedido.
     """
-    pedido = models.ForeignKey(
-        Pedido,
-        on_delete=models.CASCADE,
-        related_name='itens',
-        verbose_name=_("pedido")
-    )
-    joia = models.ForeignKey(
-        Joia,
-        on_delete=models.PROTECT,  # Não permite a exclusão de uma joia se estiver em um pedido
-        related_name='itens_pedido',
-        verbose_name=_("jóia")
-    )
-    quantidade = models.PositiveIntegerField(_("quantidade"))
-    preco_unitario = models.DecimalField(_("preço unitário"), max_digits=10, decimal_places=2)
-
-    def __str__(self):
-        return f"{self.quantidade} x {self.joia.nome}"
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens')
+    joia_nome = models.CharField(max_length=255) # Snapshot do nome
+    joia_preco = models.DecimalField(max_digits=10, decimal_places=2) # Snapshot do preço
+    quantidade = models.IntegerField()
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
-        verbose_name = _("item de pedido")
-        verbose_name_plural = _("itens de pedido")
-        unique_together = ('pedido', 'joia')
-        ordering = ['pedido']
+        verbose_name = 'Item do Pedido'
+        verbose_name_plural = 'Itens do Pedido'
+        db_table = 'item_pedido'
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.joia_nome} (Pedido {self.pedido.id})"
+    
+    @property
+    def subtotal_formatado(self):
+        return f"R$ {self.subtotal:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# O modelo ProfileUsuario foi integrado ao modelo Usuario usando o AbstractUser.

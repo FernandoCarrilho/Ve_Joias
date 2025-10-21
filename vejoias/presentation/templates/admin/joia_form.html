@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar Joia: {{ form.instance.nome }}{% else %}Adicionar Nova Joia{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
+
+        <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-3">
+            <i class="fas fa-gem text-pink-600 mr-2"></i> 
+            {% if form.instance.pk %}Editar Joia{% else %}Adicionar Nova Joia{% endif %}
+        </h1>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Se houver erros globais do formulário -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                    <strong class="font-bold">Erro:</strong>
+                    <span class="block sm:inline">{{ form.non_field_errors }}</span>
+                </div>
+            {% endif %}
+
+            <!-- GRID para Nome e Categoria -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Nome da Joia -->
+                <div>
+                    <label for="{{ form.nome.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Nome do Produto <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="{{ form.nome.id_for_label }}" name="{{ form.nome.name }}"
+                           value="{{ form.nome.value|default:'' }}"
+                           required maxlength="255"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                    {% if form.nome.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.nome.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Categoria -->
+                <div>
+                    <label for="{{ form.categoria.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Categoria <span class="text-red-500">*</span>
+                    </label>
+                    <select id="{{ form.categoria.id_for_label }}" name="{{ form.categoria.name }}" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                        {{ form.categoria }}
+                    </select>
+                    {% if form.categoria.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.categoria.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Preço e Estoque -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Preço -->
+                <div>
+                    <label for="{{ form.preco.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Preço (R$) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" step="0.01" min="0.01" id="{{ form.preco.id_for_label }}" name="{{ form.preco.name }}"
+                           value="{{ form.preco.value|default:'' }}"
+                           required
+                           placeholder="Ex: 49.90"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                    {% if form.preco.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.preco.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Estoque -->
+                <div>
+                    <label for="{{ form.estoque.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Quantidade em Estoque <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" min="0" id="{{ form.estoque.id_for_label }}" name="{{ form.estoque.name }}"
+                           value="{{ form.estoque.value|default:'0' }}"
+                           required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">
+                    {% if form.estoque.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.estoque.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Imagem e Slug -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Imagem -->
+                <div>
+                    <label for="{{ form.imagem.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Imagem do Produto
+                    </label>
+                    
+                    {% if form.instance.imagem %}
+                        <div class="mt-1 mb-2">
+                            <img src="{{ form.instance.imagem.url }}" alt="Imagem atual" class="h-20 w-20 object-cover rounded-lg border shadow-sm inline-block mr-3">
+                            <span class="text-sm text-gray-500">Imagem atual: {{ form.instance.imagem.name|truncatechars:30 }}</span>
+                        </div>
+                    {% endif %}
+                    
+                    <input type="file" id="{{ form.imagem.id_for_label }}" name="{{ form.imagem.name }}"
+                           class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 transition duration-150">
+                    {% if form.imagem.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.imagem.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Slug -->
+                <div>
+                    <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Slug (URL amigável)
+                    </label>
+                    <input type="text" id="{{ form.slug.id_for_label }}" name="{{ form.slug.name }}"
+                           value="{{ form.slug.value|default:'' }}"
+                           maxlength="255"
+                           placeholder="joia-anel-diamante (Deixe vazio para auto-gerar)"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 bg-gray-50 transition duration-150">
+                    {% if form.slug.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.slug.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Descrição Longa -->
+            <div>
+                <label for="{{ form.descricao_longa.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Descrição Detalhada
+                </label>
+                <textarea id="{{ form.descricao_longa.id_for_label }}" name="{{ form.descricao_longa.name }}"
+                          rows="5"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 transition duration-150">{{ form.descricao_longa.value|default:'' }}</textarea>
+                {% if form.descricao_longa.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.descricao_longa.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-2 text-xs text-gray-500">Detalhes sobre material, tamanho, e cuidados com a joia.</p>
+            </div>
+
+            <!-- Checkbox de Destaque -->
+            <div class="pt-4 flex items-center">
+                <input id="{{ form.destaque.id_for_label }}" name="{{ form.destaque.name }}" type="checkbox"
+                       {% if form.destaque.value %}checked{% endif %}
+                       class="h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                <label for="{{ form.destaque.id_for_label }}" class="ml-3 block text-sm font-medium text-gray-700">
+                    Marcar como Destaque (Mostrar na página inicial)
+                </label>
+                {% if form.destaque.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.destaque.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+
+            <!-- Botões de Ação -->
+            <div class="flex justify-end space-x-4 pt-6 border-t">
+                <a href="{% url 'admin_joia_list' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
+                    <i class="fas fa-times mr-2"></i> Cancelar
+                </a>
+                
+                <button type="submit" 
+                        class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg shadow-md text-white bg-pink-600 hover:bg-pink-700 transition duration-300">
+                    <i class="fas fa-save mr-2"></i> 
+                    {% if form.instance.pk %}Salvar Joia{% else %}Adicionar Joia{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{{ joia.nome }} - Detalhes{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-10 max-w-5xl">
+    
+    <div class="bg-white p-8 rounded-xl shadow-2xl">
+        <div class="md:flex md:space-x-8">
+            
+            <!-- Coluna da Imagem -->
+            <div class="md:w-1/2 mb-6 md:mb-0">
+                <div class="aspect-w-1 aspect-h-1 overflow-hidden rounded-xl shadow-xl border border-gray-100">
+                    <img src="{{ joia.imagem_url|default:'https://placehold.co/800x800/f0d8e4/880e4f?text=Joia' }}" 
+                         alt="{{ joia.nome }}" 
+                         class="w-full h-full object-cover"
+                         onerror="this.onerror=null;this.src='https://placehold.co/800x800/f0d8e4/880e4f?text=Joia';" />
+                </div>
+            </div>
+
+            <!-- Coluna dos Detalhes e Compra -->
+            <div class="md:w-1/2">
+                <span class="inline-block px-3 py-1 text-sm font-semibold rounded-full mb-2 
+                             {% if joia.estoque > 10 %}bg-green-100 text-green-700{% elif joia.estoque > 0 %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}">
+                    {% if joia.estoque > 0 %}{{ joia.estoque }} disponíveis{% else %}Esgotado{% endif %}
+                </span>
+                
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-2">{{ joia.nome }}</h1>
+                <p class="text-xl text-pink-600 font-semibold mb-4">{{ joia.categoria_nome }}</p>
+                
+                <!-- Preço -->
+                <p class="text-4xl font-bold text-gray-900 mb-6 border-t pt-4">
+                    R$ {{ joia.preco|floatformat:2 }}
+                </p>
+
+                <!-- Descrição -->
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Detalhes</h2>
+                <p class="text-gray-600 mb-6 leading-relaxed">{{ joia.descricao|linebreaksbr }}</p>
+                
+                <!-- Formulário de Compra (Quantidade) -->
+                {% if joia.estoque > 0 %}
+                    <form id="form-adicionar-carrinho" method="post" action="{% url 'api_carrinho' %}" class="space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="joia_id" value="{{ joia.id }}">
+                        
+                        <div class="flex items-center space-x-4">
+                            <label for="quantidade" class="text-lg font-medium text-gray-700">Quantidade:</label>
+                            <input type="number" id="quantidade" name="quantidade" value="1" min="1" max="{{ joia.estoque }}" required
+                                   class="w-20 p-2 border border-gray-300 rounded-lg text-center focus:ring-pink-500 focus:border-pink-500">
+                            
+                            <button type="submit" 
+                                    class="flex-grow bg-pink-600 text-white text-lg font-bold py-3 px-6 rounded-xl shadow-md hover:bg-pink-700 transition duration-300 transform hover:scale-[1.005]">
+                                <i class="fas fa-cart-plus mr-2"></i> Adicionar ao Carrinho
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="p-4 bg-red-50 text-red-700 rounded-lg text-center font-bold shadow-inner">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> Produto Esgotado!
+                    </div>
+                {% endif %}
+
+                <a href="{% url 'catalogo' %}" class="mt-6 block text-center text-sm text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-arrow-left mr-1"></i> Continuar comprando
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Manipulação do formulário de adição ao carrinho via AJAX para evitar recarregar a página
+    document.getElementById('form-adicionar-carrinho').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = {
+            joia_id: formData.get('joia_id'),
+            quantidade: parseInt(formData.get('quantidade'))
+        };
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken 
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json().then(json => ({ status: response.status, body: json })))
+        .then(({ status, body }) => {
+            if (status >= 200 && status < 300) {
+                // Atualização de feedback visual (ex: ícone de carrinho no header)
+                alert(`${body.joia_nome} adicionada(o) ao carrinho com sucesso!`);
+            } else {
+                alert('Erro ao adicionar item: ' + (body.message || 'Erro desconhecido.'));
+            }
+        })
+        .catch(error => {
+            console.error('Erro na comunicação:', error);
+            alert('Falha na comunicação com o servidor. Tente novamente.');
+        });
+    });
+</script>
+{% endblock %}

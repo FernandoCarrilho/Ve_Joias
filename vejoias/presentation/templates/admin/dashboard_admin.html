@@ -1,0 +1,305 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Vejóias Admin</title>
+    <!-- Carregamento do Tailwind CSS para estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração da fonte Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- Ícones Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Navbar Administrativa Simples (Mock) -->
+    <nav class="bg-pink-600 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="#" class="text-2xl font-extrabold text-white tracking-wider">Vejóias Admin</a>
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg bg-pink-700/50">
+                        <i class="fas fa-chart-line mr-1"></i> Dashboard
+                    </a>
+                    <a href="./products_list.html" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg">
+                        <i class="fas fa-box-open mr-1"></i> Produtos
+                    </a>
+                    <a href="#" class="text-white hover:text-pink-100 transition duration-150 p-2 rounded-lg">
+                        <i class="fas fa-receipt mr-1"></i> Pedidos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-10">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-8">Visão Geral do E-commerce</h1>
+
+        <!-- Cartões de Métricas Principais (Real-time data) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            
+            <!-- Cartão 1: Receita Total (Mock) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-b-4 border-pink-500 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500 uppercase">Receita (Mês)</p>
+                    <i class="fas fa-dollar-sign text-2xl text-pink-500"></i>
+                </div>
+                <p class="text-3xl font-bold text-gray-900 mt-1">R$ 12.450,00</p>
+                <p class="text-xs text-green-500 mt-2"><i class="fas fa-arrow-up mr-1"></i> 12% desde o mês passado</p>
+            </div>
+
+            <!-- Cartão 2: Total de Produtos (Real-time) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-b-4 border-pink-500 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500 uppercase">Total de Produtos</p>
+                    <i class="fas fa-gem text-2xl text-pink-500"></i>
+                </div>
+                <p id="stat-total-products" class="text-3xl font-bold text-gray-900 mt-1">...</p>
+                <p class="text-xs text-gray-400 mt-2">Inventário completo de jóias</p>
+            </div>
+
+            <!-- Cartão 3: Produtos Ativos (Real-time) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-b-4 border-pink-500 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500 uppercase">Produtos Ativos</p>
+                    <i class="fas fa-check-circle text-2xl text-pink-500"></i>
+                </div>
+                <p id="stat-active-products" class="text-3xl font-bold text-gray-900 mt-1">...</p>
+                <p class="text-xs text-gray-400 mt-2">Disponíveis para compra na loja</p>
+            </div>
+
+            <!-- Cartão 4: Alertas de Estoque Baixo (Real-time) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-b-4 border-red-500 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500 uppercase">Estoque Baixo</p>
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+                </div>
+                <p id="stat-low-stock" class="text-3xl font-bold text-gray-900 mt-1">...</p>
+                <p class="text-xs text-red-500 mt-2">Itens que precisam de reposição!</p>
+            </div>
+        </div>
+
+        <!-- Alertas de Estoque Baixo (Tabela Detalhada) -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-10">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-bell text-yellow-500 mr-2"></i> Produtos com Estoque Crítico (abaixo de 5)
+                </h2>
+                <a href="./products_list.html" class="text-pink-600 hover:text-pink-800 text-sm font-semibold">Ver Todos</a>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low-stock-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Linhas de produtos com baixo estoque preenchidas por JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="low-stock-empty-state" class="p-4 text-center text-green-600 hidden">
+                <i class="fas fa-smile-beam mr-2"></i> Ótimo! Nenhum produto está com estoque crítico.
+            </div>
+        </div>
+
+        <!-- Gráfico e Atividade Recente (Mock) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Coluna 1: Gráfico de Vendas (Mock) -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-3">Histórico de Vendas (Últimos 6 meses)</h2>
+                <!-- Mockup de Gráfico Simples -->
+                <div class="h-64 flex items-end justify-between p-4 bg-gray-50 rounded-lg">
+                    <div class="w-1/6 bg-pink-300 rounded-t-lg h-2/4 hover:bg-pink-500 transition duration-300" title="R$ 10k"></div>
+                    <div class="w-1/6 bg-pink-300 rounded-t-lg h-3/4 hover:bg-pink-500 transition duration-300" title="R$ 15k"></div>
+                    <div class="w-1/6 bg-pink-300 rounded-t-lg h-1/2 hover:bg-pink-500 transition duration-300" title="R$ 8k"></div>
+                    <div class="w-1/6 bg-pink-300 rounded-t-lg h-4/5 hover:bg-pink-500 transition duration-300" title="R$ 18k"></div>
+                    <div class="w-1/6 bg-pink-500 rounded-t-lg h-full hover:bg-pink-700 transition duration-300" title="R$ 20k"></div>
+                    <div class="w-1/6 bg-pink-300 rounded-t-lg h-3/5 hover:bg-pink-500 transition duration-300" title="R$ 12k"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 mt-2">
+                    <span>Jun</span><span>Jul</span><span>Ago</span><span>Set</span><span>Out</span><span>Nov</span>
+                </div>
+            </div>
+
+            <!-- Coluna 2: Atividade Recente (Mock) -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-3">Atividade Recente</h2>
+                <ul class="space-y-4">
+                    <li class="flex items-center space-x-3 text-sm text-gray-700">
+                        <i class="fas fa-shopping-cart text-green-500"></i>
+                        <p><span class="font-semibold">Novo Pedido #1005</span> de Maria S. (R$ 189,90)</p>
+                        <span class="text-xs text-gray-400 ml-auto">10 min atrás</span>
+                    </li>
+                    <li class="flex items-center space-x-3 text-sm text-gray-700">
+                        <i class="fas fa-user-plus text-blue-500"></i>
+                        <p><span class="font-semibold">Novo Cliente</span> cadastrado: João R.</p>
+                        <span class="text-xs text-gray-400 ml-auto">30 min atrás</span>
+                    </li>
+                    <li class="flex items-center space-x-3 text-sm text-gray-700">
+                        <i class="fas fa-box-open text-pink-500"></i>
+                        <p><span class="font-semibold">Produto Reposto</span>: Colar de Coração</p>
+                        <span class="text-xs text-gray-400 ml-auto">1h atrás</span>
+                    </li>
+                    <li class="flex items-center space-x-3 text-sm text-gray-700">
+                        <i class="fas fa-shipping-fast text-indigo-500"></i>
+                        <p><span class="font-semibold">Pedido #1004</span> enviado</p>
+                        <span class="text-xs text-gray-400 ml-auto">3h atrás</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('Debug');
+
+        // Variáveis globais obrigatórias
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        // Inicialização do Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let userId = null;
+        const LOW_STOCK_THRESHOLD = 5; // Limite para considerar estoque baixo
+
+        // --- Referências DOM ---
+        const statTotalProducts = document.getElementById('stat-total-products');
+        const statActiveProducts = document.getElementById('stat-active-products');
+        const statLowStock = document.getElementById('stat-low-stock');
+        const lowStockTableBody = document.getElementById('low-stock-table-body');
+        const lowStockEmptyState = document.getElementById('low-stock-empty-state');
+
+        /**
+         * Retorna a referência da coleção de produtos (privada para o admin).
+         */
+        function getProductsCollectionRef() {
+            // A coleção de produtos está na área privada do admin (criada no products_list.html)
+            return collection(db, `artifacts/${appId}/users/${userId}/products`);
+        }
+        
+        /**
+         * Renderiza uma linha na tabela de estoque baixo.
+         * @param {Object} product - Dados do produto.
+         */
+        function renderLowStockRow(product) {
+            const row = document.createElement('tr');
+            row.id = `low-stock-${product.id}`;
+            
+            // HTML da Linha
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <img class="h-10 w-10 rounded-lg object-cover" src="${product.imageUrl}" alt="${product.name}" onerror="this.onerror=null;this.src='https://placehold.co/40x40/FFB6C1/FFFFFF?text=Joia';">
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${product.name}</div>
+                            <div class="text-xs text-gray-500 capitalize">${product.category}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-red-600">${product.stock}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a href="./products_list.html" class="text-pink-600 hover:text-pink-800 transition duration-150">
+                        <i class="fas fa-pencil-alt mr-1"></i> Repor
+                    </a>
+                </td>
+            `;
+            return row;
+        }
+
+        /**
+         * Configura o listener em tempo real (onSnapshot) para atualizar as métricas.
+         */
+        function setupRealtimeMetricsListener() {
+            if (!userId) {
+                console.error('UserId não definido. Não é possível configurar o listener.');
+                return;
+            }
+
+            const productsQuery = query(getProductsCollectionRef());
+
+            onSnapshot(productsQuery, (snapshot) => {
+                let totalProducts = 0;
+                let activeProducts = 0;
+                let lowStockCount = 0;
+                const lowStockProducts = [];
+
+                snapshot.forEach(doc => {
+                    totalProducts++;
+                    const product = doc.data();
+                    
+                    if (product.status === 'active') {
+                        activeProducts++;
+                    }
+
+                    if (product.stock <= LOW_STOCK_THRESHOLD) {
+                        lowStockCount++;
+                        lowStockProducts.push({ id: doc.id, ...product });
+                    }
+                });
+
+                // 1. Atualiza os Cartões de Métricas
+                statTotalProducts.textContent = totalProducts;
+                statActiveProducts.textContent = activeProducts;
+                statLowStock.textContent = lowStockCount;
+
+                // 2. Atualiza a Tabela de Estoque Baixo
+                lowStockTableBody.innerHTML = '';
+                
+                if (lowStockProducts.length > 0) {
+                    lowStockProducts.forEach(product => {
+                        lowStockTableBody.appendChild(renderLowStockRow(product));
+                    });
+                    lowStockEmptyState.classList.add('hidden');
+                } else {
+                    lowStockEmptyState.classList.remove('hidden');
+                }
+
+            }, (error) => {
+                console.error('Erro ao receber atualização de produtos:', error);
+            });
+        }
+
+        /**
+         * Autentica o usuário e inicializa a aplicação.
+         */
+        async function initializeAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                console.log('Autenticação Firebase concluída. User ID:', userId);
+                setupRealtimeMetricsListener();
+            } catch (error) {
+                console.error('Erro na autenticação Firebase:', error);
+            }
+        }
+
+        // --- Inicialização ---
+        initializeAuth();
+        
+    </script>
+</body>
+</html>

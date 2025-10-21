@@ -1,10 +1,17 @@
 # vejoias/urls.py
+"""
+Configuração principal de URL do projeto Vejoias.
 
+Este arquivo centraliza o roteamento, incluindo:
+1. Rotas do Admin (Django Admin)
+2. Rotas da Loja (vejoias.presentation)
+3. Rotas de Autenticação (Recuperação de Senha)
+4. Rotas da Documentação da API (Swagger/Redoc)
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
-
 
 
 urlpatterns = [
@@ -14,6 +21,9 @@ urlpatterns = [
     # URL para o painel de administração padrão do Django
     path('admin/', admin.site.urls),
 
+    # ====================================================================
+    # ROTAS DE DOCUMENTAÇÃO DA API (DRF SPECTACULAR)
+    # ====================================================================
      # 1. Rota para o arquivo Schema YAML (gerado automaticamente)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     
@@ -25,8 +35,10 @@ urlpatterns = [
 
 
     # ====================================================================
-    # NOVAS URLS PARA RECUPERAÇÃO DE SENHA
+    # ROTAS PADRÃO DO DJANGO PARA RECUPERAÇÃO DE SENHA
     # ====================================================================
+    # NOTA: Os templates para estas views devem ser criados em vejoias/presentation/templates/password_reset/
+    
     # 1. Solicita o e-mail para a redefinição de senha
     path('password_reset/',
          auth_views.PasswordResetView.as_view(template_name='password_reset/password_reset_form.html'),

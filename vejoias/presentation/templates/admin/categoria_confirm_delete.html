@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Deletar Categoria{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-md">
+    <div class="bg-white p-8 rounded-xl shadow-2xl border-4 border-red-200">
+
+        <div class="text-center mb-6">
+            <i class="fas fa-exclamation-triangle text-red-500 text-6xl mb-4"></i>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Confirmação de Exclusão</h1>
+        </div>
+        
+        <p class="text-lg text-gray-700 mb-6 text-center">
+            Você tem certeza que deseja deletar a categoria: 
+            <strong class="text-red-600">"{{ categoria.nome }}"</strong>?
+        </p>
+
+        <p class="text-sm text-gray-500 mb-8 text-center bg-yellow-50 p-4 rounded-lg">
+            <i class="fas fa-exclamation-circle mr-1 text-yellow-600"></i> 
+            **AVISO:** Esta ação é irreversível e pode afetar joias que estejam vinculadas a esta categoria.
+        </p>
+
+        <form method="post" class="flex justify-center space-x-4">
+            {% csrf_token %}
+            
+            <a href="{% url 'admin_categoria_list' %}" 
+               class="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
+                <i class="fas fa-arrow-left mr-2"></i> Cancelar
+            </a>
+            
+            <button type="submit" 
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-md text-white bg-red-600 hover:bg-red-700 transition duration-300">
+                <i class="fas fa-trash-alt mr-2"></i> Deletar Permanentemente
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

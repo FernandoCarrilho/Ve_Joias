@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações Gerais{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-900 flex items-center">
+                <i class="fas fa-cog text-pink-600 mr-3"></i>
+                Configurações Gerais
+            </h1>
+        </div>
+
+        <!-- Conteúdo Principal com Abas -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Coluna de Navegação (Tabs) -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-lg border border-gray-100 p-4 h-min">
+                <nav class="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-1" role="tablist">
+                    <button type="button" data-tab="general" 
+                            class="tab-button w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition duration-150 
+                                   text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            role="tab" aria-selected="true">
+                        <i class="fas fa-home mr-2"></i> Geral
+                    </button>
+                    <button type="button" data-tab="store" 
+                            class="tab-button w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition duration-150 
+                                   text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            role="tab" aria-selected="false">
+                        <i class="fas fa-store mr-2"></i> Informações da Loja
+                    </button>
+                    <button type="button" data-tab="integrations" 
+                            class="tab-button w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition duration-150 
+                                   text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            role="tab" aria-selected="false">
+                        <i class="fas fa-plug mr-2"></i> Integrações
+                    </button>
+                    <button type="button" data-tab="security" 
+                            class="tab-button w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition duration-150 
+                                   text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            role="tab" aria-selected="false">
+                        <i class="fas fa-shield-alt mr-2"></i> Segurança e Acesso
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Coluna de Formulário (Conteúdo das Abas) -->
+            <div class="lg:col-span-3">
+                <form action="#" method="POST" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
+                    
+                    <!-- 1. GERAL (Tab Default) -->
+                    <div data-tab-content="general" class="tab-content space-y-5">
+                        <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Ajustes Gerais do Sistema</h2>
+
+                        <!-- Modo Manutenção -->
+                        <div class="border p-4 rounded-lg flex justify-between items-center bg-yellow-50">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Modo de Manutenção</h3>
+                                <p class="text-sm text-gray-600">Ative para fechar a loja e exibir uma página de "Em Breve" para os clientes.</p>
+                            </div>
+                            <!-- Toggle Switch -->
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" value="" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Configurações de Localização -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="default_currency" class="block text-sm font-medium text-gray-700 mb-1">Moeda Padrão</label>
+                                <select id="default_currency" name="default_currency"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                                    <option value="BRL">Real Brasileiro (BRL)</option>
+                                    <option value="USD">Dólar Americano (USD)</option>
+                                    <option value="EUR">Euro (EUR)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="default_locale" class="block text-sm font-medium text-gray-700 mb-1">Fuso Horário</label>
+                                <select id="default_locale" name="default_locale"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                                    <option value="America/Sao_Paulo">GMT-3:00 (São Paulo)</option>
+                                    <option value="America/Fortaleza">GMT-3:00 (Fortaleza)</option>
+                                    <option value="America/Manaus">GMT-4:00 (Manaus)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. INFORMAÇÕES DA LOJA -->
+                    <div data-tab-content="store" class="tab-content hidden space-y-5">
+                        <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Dados Fiscais e de Contato</h2>
+                        
+                        <div>
+                            <label for="store_name" class="block text-sm font-medium text-gray-700 mb-1">Nome Fantasia da Loja <span class="text-red-500">*</span></label>
+                            <input type="text" id="store_name" name="store_name" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                value="Vejoias Comércio de Joias LTDA" placeholder="Nome Completo da Sua Empresa">
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="cnpj" class="block text-sm font-medium text-gray-700 mb-1">CNPJ</label>
+                                <input type="text" id="cnpj" name="cnpj"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                    value="12.345.678/0001-90" placeholder="00.000.000/0000-00">
+                            </div>
+                            <div>
+                                <label for="store_email" class="block text-sm font-medium text-gray-700 mb-1">Email de Contato Principal</label>
+                                <input type="email" id="store_email" name="store_email"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                    value="contato@vejoias.com.br" placeholder="email@suaempresa.com.br">
+                            </div>
+                        </div>
+
+                        <!-- Endereço da Sede (Simplificado) -->
+                        <div class="pt-4 border-t">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Endereço da Sede</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Rua, Número e Complemento</label>
+                                    <input type="text" id="address" name="address"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                        value="Av. Diamante, 400 - Sala 101" placeholder="Rua, Número, Complemento">
+                                </div>
+                                <div>
+                                    <label for="zip_code" class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                                    <input type="text" id="zip_code" name="zip_code"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                        value="01000-000" placeholder="00000-000">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. INTEGRAÇÕES -->
+                    <div data-tab-content="integrations" class="tab-content hidden space-y-5">
+                        <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Pagamento e Envio</h2>
+
+                        <!-- Integração de Pagamento -->
+                        <div class="border p-4 rounded-lg bg-pink-50 space-y-3">
+                            <h3 class="font-semibold text-pink-700 flex items-center">
+                                <i class="fas fa-credit-card mr-2"></i> Gateway de Pagamento (Ex: Pagar.me)
+                            </h3>
+                            <div>
+                                <label for="payment_public_key" class="block text-sm font-medium text-gray-700 mb-1">Chave Pública (Live)</label>
+                                <input type="text" id="payment_public_key" name="payment_public_key"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                    value="pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxx" placeholder="Chave Pública do seu Gateway">
+                            </div>
+                            <div>
+                                <label for="payment_secret_key" class="block text-sm font-medium text-gray-700 mb-1">Chave Secreta (Live)</label>
+                                <input type="password" id="payment_secret_key" name="payment_secret_key"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                    value="" placeholder="Chave Secreta do seu Gateway">
+                            </div>
+                        </div>
+
+                        <!-- Integração de Envio -->
+                        <div class="border p-4 rounded-lg bg-blue-50 space-y-3">
+                            <h3 class="font-semibold text-blue-700 flex items-center">
+                                <i class="fas fa-shipping-fast mr-2"></i> Serviço de Logística (Ex: Correios/API)
+                            </h3>
+                            <div>
+                                <label for="shipping_api_token" class="block text-sm font-medium text-gray-700 mb-1">Token de Integração (API)</label>
+                                <input type="text" id="shipping_api_token" name="shipping_api_token"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                                    value="ABC-123-XYZ-456" placeholder="Token/Chave de API do Serviço de Envio">
+                            </div>
+                            <div class="mt-2 flex items-center">
+                                <input id="calculate_shipping" name="calculate_shipping" type="checkbox" checked
+                                    class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                                <label for="calculate_shipping" class="ml-2 block text-sm text-gray-900">
+                                    Habilitar cálculo de frete em tempo real
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. SEGURANÇA E ACESSO -->
+                    <div data-tab-content="security" class="tab-content hidden space-y-5">
+                        <h2 class="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Regras de Acesso e Senhas</h2>
+                        
+                        <!-- Gestão de Usuários Admin (Link/Botão de redirecionamento) -->
+                        <div class="border p-4 rounded-lg flex justify-between items-center bg-indigo-50">
+                            <div>
+                                <h3 class="font-semibold text-gray-800">Gerenciar Usuários Administradores</h3>
+                                <p class="text-sm text-gray-600">Adicione, edite ou remova usuários com acesso a este painel.</p>
+                            </div>
+                            <a href="{% url 'admin_users_list' %}" 
+                               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 flex items-center">
+                                <i class="fas fa-users-cog mr-1"></i> Gerenciar
+                            </a>
+                        </div>
+                        
+                        <!-- Política de Senha -->
+                        <div class="border p-4 rounded-lg space-y-3">
+                            <h3 class="font-semibold text-gray-800">Política de Senhas do Painel</h3>
+                            <div class="flex items-center">
+                                <input id="password_min_length" name="password_min_length" type="number" min="6" max="20"
+                                    class="w-16 px-3 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 mr-2"
+                                    value="8">
+                                <label for="password_min_length" class="block text-sm text-gray-700">
+                                    Comprimento Mínimo de Caracteres
+                                </label>
+                            </div>
+                            <div class="mt-2 flex items-center">
+                                <input id="require_special_char" name="require_special_char" type="checkbox" checked
+                                    class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                                <label for="require_special_char" class="ml-2 block text-sm text-gray-900">
+                                    Exigir caracteres especiais (Ex: !, @, #)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Botão de Ação do Formulário (Comum a todas as abas) -->
+                    <div class="flex justify-end pt-6 border-t border-gray-200">
+                        <button type="submit" class="px-6 py-2 text-white bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 transition duration-150">
+                            Salvar Configurações
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    // Lógica simples para a troca de abas (tabs)
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        const activateTab = (targetTab) => {
+            // Esconde todo o conteúdo
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Desativa todos os botões
+            tabButtons.forEach(btn => {
+                btn.classList.remove('bg-pink-600', 'text-white', 'hover:bg-pink-700');
+                btn.classList.add('text-gray-700', 'hover:bg-gray-100');
+            });
+
+            // Ativa o conteúdo alvo
+            const activeContent = document.querySelector(`[data-tab-content="${targetTab}"]`);
+            if (activeContent) {
+                activeContent.classList.remove('hidden');
+            }
+
+            // Ativa o botão atual
+            const activeButton = document.querySelector(`.tab-button[data-tab="${targetTab}"]`);
+            if (activeButton) {
+                activeButton.classList.remove('text-gray-700', 'hover:bg-gray-100');
+                activeButton.classList.add('bg-pink-600', 'text-white', 'hover:bg-pink-700');
+            }
+        };
+
+        // Adiciona listeners aos botões
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                activateTab(targetTab);
+            });
+        });
+
+        // Garante que a primeira aba esteja ativa por padrão ao carregar
+        activateTab('general');
+    });
+</script>
+{% endblock %}

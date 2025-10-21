@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Pedido #20240902{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+
+        <!-- Header e Ações Principais -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2 sm:mb-0 flex items-center">
+                <i class="fas fa-receipt text-pink-600 mr-3"></i>
+                Pedido #20240902
+            </h1>
+            <div class="flex items-center space-x-3">
+                <!-- Botão de Atualizar Status -->
+                <button type="button" 
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 transition duration-150">
+                    <i class="fas fa-exchange-alt mr-1"></i> Alterar Status
+                </button>
+                <!-- Botão de Imprimir Fatura -->
+                <button type="button" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-pink-600 rounded-lg shadow-md hover:bg-pink-700 transition duration-150">
+                    <i class="fas fa-print mr-1"></i> Imprimir Fatura
+                </button>
+            </div>
+        </div>
+
+        <!-- Alerta de Status Principal -->
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg mb-6 shadow-md" role="alert">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-3 text-2xl"></i>
+                <p class="font-bold text-lg">Status Atual: Pendente de Pagamento</p>
+            </div>
+            <p class="text-sm mt-1">Este pedido está aguardando a confirmação do pagamento para iniciar o processamento.</p>
+        </div>
+
+
+        <!-- Layout de Colunas: Detalhes do Pedido (Esquerda) e Histórico (Direita) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Coluna Principal (2/3) - Detalhes do Pedido e Itens -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- 1. Detalhes Gerais e Cliente -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-info-circle text-pink-500 mr-2"></i> Informações Básicas
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="font-medium text-gray-500">Data do Pedido:</p>
+                            <p class="font-semibold text-gray-900">20/10/2025 às 14:30</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Método de Pagamento:</p>
+                            <p class="font-semibold text-gray-900">Cartão de Crédito</p>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <p class="font-medium text-gray-500">Cliente:</p>
+                            <p class="font-semibold text-gray-900 flex justify-between items-center">
+                                João Santos (joao.santos@email.com)
+                                <a href="#" class="text-xs text-pink-600 hover:text-pink-700">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Ver Perfil
+                                </a>
+                            </p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Endereço de Entrega:</p>
+                            <p class="font-semibold text-gray-900">Rua da Prata, 123, Apto 5. Centro, São Paulo - SP, 01000-000</p>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-500">Frete:</p>
+                            <p class="font-semibold text-gray-900">Sedex - R$ 25,00</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Itens do Pedido -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-box-open text-pink-500 mr-2"></i> Produtos
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <!-- Item 1 -->
+                        <div class="flex items-center space-x-4 border-b pb-4 last:border-b-0">
+                            <div class="flex-shrink-0">
+                                <img class="h-16 w-16 object-cover rounded-lg border" 
+                                     src="https://placehold.co/64x64/ffccd5/9c27b0?text=Brinco" 
+                                     alt="Brinco de Ouro 18k">
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">Brinco de Argola em Ouro 18k</p>
+                                <p class="text-xs text-gray-500">SKU: AROLA001 | Tamanho: P</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">1 x R$ 850,00</p>
+                            </div>
+                        </div>
+
+                        <!-- Item 2 -->
+                        <div class="flex items-center space-x-4 border-b pb-4 last:border-b-0">
+                            <div class="flex-shrink-0">
+                                <img class="h-16 w-16 object-cover rounded-lg border" 
+                                     src="https://placehold.co/64x64/ffd5cc/ff5722?text=Colar" 
+                                     alt="Colar de Prata com Pingente">
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">Colar de Prata 925 com Pingente de Zircônia</p>
+                                <p class="text-xs text-gray-500">SKU: COLAR005 | Cor: Prata</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">1 x R$ 375,50</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna Lateral (1/3) - Resumo Financeiro e Histórico de Status -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- 3. Resumo Financeiro -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-calculator text-pink-500 mr-2"></i> Resumo Financeiro
+                    </h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Subtotal (2 itens):</span>
+                            <span class="font-medium text-gray-900">R$ 1.225,50</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Frete:</span>
+                            <span class="font-medium text-gray-900">R$ 25,00</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-2">
+                            <span class="text-lg font-bold text-gray-900">Total do Pedido:</span>
+                            <span class="text-lg font-bold text-pink-600">R$ 1.250,50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Histórico de Status / Linha do Tempo -->
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4 flex items-center">
+                        <i class="fas fa-history text-pink-500 mr-2"></i> Histórico de Status
+                    </h2>
+                    <ol class="relative border-l border-gray-200 ml-3">                  
+                        <!-- Status 1: Pedido Criado -->
+                        <li class="mb-6 ml-6">            
+                            <span class="absolute flex items-center justify-center w-3 h-3 bg-gray-200 rounded-full -left-1.5 ring-4 ring-white">
+                            </span>
+                            <h3 class="flex items-center mb-1 text-sm font-semibold text-gray-900">
+                                Pedido Criado
+                            </h3>
+                            <time class="block mb-2 text-xs font-normal leading-none text-gray-400">
+                                20/10/2025 às 14:30
+                            </time>
+                            <p class="text-xs font-normal text-gray-500">O cliente finalizou a compra.</p>
+                        </li>
+                        <!-- Status 2: Pendente de Pagamento (Atual) -->
+                        <li class="mb-6 ml-6">
+                            <span class="absolute flex items-center justify-center w-3 h-3 bg-yellow-500 rounded-full -left-1.5 ring-4 ring-white">
+                            </span>
+                            <h3 class="mb-1 text-sm font-semibold text-yellow-700">
+                                Pendente de Pagamento
+                            </h3>
+                            <time class="block mb-2 text-xs font-normal leading-none text-gray-400">
+                                20/10/2025 às 14:31
+                            </time>
+                            <p class="text-xs font-normal text-gray-500">Aguardando confirmação da operadora.</p>
+                        </li>
+                        <!-- Status 3: Futuro Status (Exemplo) -->
+                        <li class="ml-6 opacity-50">
+                            <span class="absolute flex items-center justify-center w-3 h-3 bg-gray-100 rounded-full -left-1.5 ring-4 ring-white">
+                            </span>
+                            <h3 class="mb-1 text-sm font-semibold text-gray-500">
+                                <i class="fas fa-lock mr-1"></i> Aguardando Próximo Status
+                            </h3>
+                        </li>
+                    </ol>
+                </div>
+
+            </div> <!-- Fim Coluna Lateral -->
+        </div> <!-- Fim Grid -->
+        
+        <!-- Botão Voltar -->
+        <div class="mt-8 text-center">
+             <a href="{% url 'admin_orders_list' %}" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition duration-150">
+                <i class="fas fa-arrow-left mr-2"></i> Voltar para a Lista de Pedidos
+            </a>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

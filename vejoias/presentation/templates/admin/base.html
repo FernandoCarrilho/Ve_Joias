@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vejóias Admin | {% block title %}{% endblock %}</title>
+    
+    <!-- Carregamento do Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Carregamento de Ícones (Font Awesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" 
+          xintegrity="sha512-z3gLpd7yknf1h0mFqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Y2/Xw55Z/1z6V8cWzT2tFq+wE4FqB3Yw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Configuração de Cores e Fontes (Opcional, mas melhora a estética) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        :root {
+            --color-pink-600: #db2777; /* Tailwind pink-600 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .active-link {
+            background-color: var(--color-pink-600);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .active-link:hover {
+            background-color: #e84d8f; /* Um rosa um pouco mais claro */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar (Menu Lateral Fixo) -->
+        <aside class="flex flex-col w-64 bg-gray-900 text-white shadow-xl flex-shrink-0 transition-transform duration-300 transform md:translate-x-0" id="sidebar">
+            <div class="p-6 flex flex-col justify-between h-full">
+                
+                <!-- Parte Superior: Logo e Navegação -->
+                <div>
+                    <!-- Logo / Título -->
+                    <div class="flex items-center mb-8">
+                        <span class="text-3xl font-extrabold text-pink-500 tracking-wider">V</span>
+                        <span class="text-3xl font-extrabold">ejoias</span>
+                        <span class="text-xs ml-1 text-gray-400">ADMIN</span>
+                    </div>
+
+                    <!-- Navegação Principal -->
+                    <nav class="space-y-2">
+                        <!-- Dashboard (Home) -->
+                        <a href="{% url 'admin_dashboard' %}" 
+                           class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'dashboard' %}active-link{% endif %}">
+                            <i class="fas fa-chart-line w-5 h-5 mr-3"></i>
+                            Dashboard
+                        </a>
+
+                        <!-- Pedidos -->
+                        <a href="{% url 'admin_orders_list' %}" 
+                           class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'orders' %}active-link{% endif %}">
+                            <i class="fas fa-shopping-cart w-5 h-5 mr-3"></i>
+                            Pedidos
+                        </a>
+
+                        <!-- Produtos -->
+                        <a href="{% url 'admin_products_list' %}" 
+                           class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'products' %}active-link{% endif %}">
+                            <i class="fas fa-gem w-5 h-5 mr-3"></i>
+                            Produtos
+                        </a>
+
+                        <!-- Clientes -->
+                        <a href="{% url 'admin_clients_list' %}" 
+                           class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'clients' %}active-link{% endif %}">
+                            <i class="fas fa-users w-5 h-5 mr-3"></i>
+                            Clientes
+                        </a>
+                        
+                        <!-- Marketing / Cupons (Sugestão de funcionalidade) -->
+                        <a href="{% url 'admin_coupons_list' %}" 
+                           class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'marketing' %}active-link{% endif %}">
+                            <i class="fas fa-tag w-5 h-5 mr-3"></i>
+                            Marketing & Cupons
+                        </a>
+                        
+                    </nav>
+                </div>
+                
+                <!-- Parte Inferior: Configurações e Copyright -->
+                <div class="space-y-4">
+                    <!-- Configurações -->
+                    <a href="{% url 'admin_settings' %}" 
+                       class="flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-800 transition duration-150 {% if active_page == 'settings' %}active-link{% endif %}">
+                        <i class="fas fa-cog w-5 h-5 mr-3"></i>
+                        Configurações
+                    </a>
+
+                    <!-- Copyright -->
+                    <div class="text-center text-xs text-gray-500 pt-4 border-t border-gray-700">
+                        &copy; 2025 Vejoias.
+                        <p class="font-semibold text-pink-400 mt-1">Desenvolvido por NaN92</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal (Header Fixo + Área de Conteúdo Scrollável) -->
+        <div class="flex flex-col flex-1 overflow-y-auto">
+            
+            <!-- Header/Top Bar (Fixo no topo) -->
+            <header class="bg-white shadow-md flex-shrink-0">
+                <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between h-16 items-center">
+                        
+                        <!-- Botão de Menu (Mobile) -->
+                        <button type="button" class="text-gray-500 hover:text-gray-900 md:hidden" id="mobile-menu-button">
+                            <i class="fas fa-bars h-6 w-6"></i>
+                        </button>
+                        
+                        <!-- Barra de Busca (Desktop) -->
+                        <div class="hidden md:block w-96">
+                            <label for="header-search" class="sr-only">Busca Global</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input id="header-search" type="search" placeholder="Busca global (pedidos, clientes, produtos...)"
+                                       class="block w-full bg-gray-100 border border-gray-200 rounded-xl py-2 pl-10 pr-3 text-sm placeholder-gray-500 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Perfil do Usuário e Notificações -->
+                        <div class="flex items-center space-x-4">
+                            <!-- Ícone de Notificações -->
+                            <button type="button" class="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 relative">
+                                <i class="fas fa-bell h-6 w-6"></i>
+                                <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white bg-red-400"></span>
+                            </button>
+
+                            <!-- Menu do Perfil (Placeholder) -->
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-medium text-gray-700 hidden sm:block">Admin</span>
+                                <img class="h-8 w-8 rounded-full" src="https://placehold.co/150x150/db2777/ffffff?text=A" alt="Avatar do Admin">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Área de Conteúdo (Onde o conteúdo específico do template é injetado) -->
+            <main class="flex-1 overflow-y-auto">
+                {% block content %}
+                <!-- Conteúdo de cada página será inserido aqui -->
+                <div class="p-6">
+                    <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-pink-500">
+                        <p class="text-gray-700 font-medium">Este é o template base. O conteúdo será carregado a partir dos arquivos específicos da página.</p>
+                    </div>
+                </div>
+                {% endblock %}
+            </main>
+        </div>
+        
+    </div>
+
+    <script>
+        // Lógica para toggle do menu lateral em mobile
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            // Toggle the 'translate-x-0' and '-translate-x-full' classes
+            sidebar.classList.toggle('-translate-x-full');
+            sidebar.classList.toggle('translate-x-0');
+        });
+        
+        // Simulação de ativação de página (Em um ambiente real, o backend faria isso)
+        // O bloco 'active_page' deve ser definido em cada template para que esta lógica funcione.
+        const activePage = "{{ active_page }}";
+        if (activePage) {
+            // Remove a classe 'active-link' de todos
+            document.querySelectorAll('a.active-link').forEach(link => {
+                link.classList.remove('active-link');
+                link.classList.add('text-gray-300', 'hover:bg-gray-800');
+            });
+
+            // Adiciona a classe 'active-link' à página atual (apenas placeholder para simular)
+            // Em um ambiente de produção real (Django/Flask), isso seria feito no template engine.
+        }
+    </script>
+</body>
+</html>
