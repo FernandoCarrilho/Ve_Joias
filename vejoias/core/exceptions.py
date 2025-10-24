@@ -1,54 +1,58 @@
-# vejoias/core/exceptions.py
-# Define exceções personalizadas para o domínio da aplicação.
-
-class ApplicationError(Exception):
-    """Exceção base para todos os erros da Aplicação (incluindo Core e Infra)."""
+class BaseErroCore(Exception):
+    """Classe base para todas as exceções da Camada Core."""
     pass
 
-class CoreException(ApplicationError):
-    """Exceção base para todos os erros de domínio (Core)."""
+# ===============================================
+# ERROS DE PERSISTÊNCIA E ENTIDADE
+# ===============================================
+
+class ItemNaoEncontradoError(BaseErroCore):
+    """Erro levantado quando uma Joia, Usuário ou Endereço não é encontrado."""
+    def __init__(self, message="O item solicitado não foi encontrado."):
+        self.message = message
+        super().__init__(self.message)
+        
+class PedidoNaoEncontradoError(ItemNaoEncontradoError):
+    """Erro específico para Pedidos não encontrados."""
     pass
 
-# --- Exceções de Entidades Não Encontradas ---
-
-class UsuarioNaoEncontradoError(CoreException):
-    """Levantada quando um Usuário específico não é encontrado."""
+class UsuarioNaoEncontradoError(ItemNaoEncontradoError):
+    """Erro específico para Usuários não encontrados."""
     pass
 
-class JoiaNaoEncontradaError(CoreException):
-    """Levantada quando uma Joia (Produto) específica não é encontrada."""
+class EnderecoInvalidoError(BaseErroCore):
+    """Erro levantado quando um endereço de entrega é inválido ou não pertence ao usuário."""
     pass
 
-class CategoriaNaoEncontradaError(CoreException):
-    """Levantada quando uma Categoria específica não é encontrada."""
-    pass
+class EstoqueInsuficienteError(BaseErroCore):
+    """Erro levantado quando a quantidade solicitada excede o estoque."""
+    def __init__(self, joia_id: str, estoque_atual: int, quantidade_solicitada: int, message=None):
+        self.joia_id = joia_id
+        self.estoque_atual = estoque_atual
+        self.quantidade_solicitada = quantidade_solicitada
+        if message is None:
+            message = (f"Estoque insuficiente para a Joia {joia_id}. "
+                       f"Disponível: {estoque_atual}, Solicitado: {quantidade_solicitada}.")
+        super().__init__(message)
 
-class PedidoNaoEncontradoError(CoreException):
-    """Levantada quando um Pedido específico não é encontrado."""
-    pass
+# ===============================================
+# ERROS DE FLUXO DE COMPRA E PAGAMENTO
+# ===============================================
 
-class ItemNaoEncontradoError(CoreException):
-    """Levantada quando um Item de Carrinho ou Item de Pedido não é encontrado."""
-    pass
+class CarrinhoVazioError(BaseErroCore):
+    """Erro levantado ao tentar fazer checkout com carrinho vazio."""
+    def __init__(self, message="O carrinho de compras está vazio."):
+        self.message = message
+        super().__init__(self.message)
 
-# --- Exceções de Regras de Negócio ---
+class PagamentoFalhouError(BaseErroCore):
+    """Erro levantado quando o Gateway de Pagamento rejeita a transação."""
+    def __init__(self, message="A transação de pagamento foi rejeitada ou falhou."):
+        self.message = message
+        super().__init__(self.message)
 
-class EstoqueInsuficienteError(CoreException):
-    """Levantada quando a quantidade solicitada de um item excede o estoque disponível."""
-    pass
-
-class CarrinhoVazioError(CoreException):
-    """Levantada ao tentar finalizar um carrinho que está vazio."""
-    pass
-
-class DadosInvalidosError(CoreException):
-    """Levantada quando dados de entrada não são válidos para uma operação de domínio."""
-    pass
-
-class StatusInvalidoError(CoreException):
-    """Levantada quando é fornecido um status inválido para uma transição ou atualização."""
-    pass
-
-class PagamentoFalhouError(CoreException):
-    """Levantada quando o processamento de pagamento falha."""
-    pass
+class StatusInvalidoError(BaseErroCore):
+    """Erro levantado ao tentar definir um status de pedido inválido."""
+    def __init__(self, message="O status fornecido não é válido para um pedido."):
+        self.message = message
+        super().__init__(self.message)

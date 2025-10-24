@@ -89,7 +89,7 @@ class MercadoPagoGateway(IGatewayPagamento):
                     referencia_externa=str(transacao_id),
                     valor=pedido.total_pedido,
                     status_pagamento=self._STATUS_MAP.get(mp_status, "PENDENTE"),
-                    data_transacao=datetime.now(),
+                    data_criacao=datetime.now(),
                     url_pagamento=url_pagamento
                 )
             else:
@@ -104,6 +104,12 @@ class MercadoPagoGateway(IGatewayPagamento):
         # e mais dependente dos dados de endereço (Endereco) para cobrança.
         # Por brevidade, vamos usar o mesmo retorno de _processar_pix, mas o MP exige mais dados aqui.
         
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": str(uuid.uuid4()),  # Para evitar duplicidade
+        }
+        
         # O payload para Boleto exige os dados de Endereço no payer/address
         payload = {
              "transaction_amount": float(pedido.total_pedido),
@@ -111,7 +117,12 @@ class MercadoPagoGateway(IGatewayPagamento):
              "description": f"Pedido {pedido.id} - Vê Jóias",
              "payer": {
                  "email": usuario.email,
-                 # ... outros dados de payer ...
+                 "first_name": usuario.nome.split()[0] if usuario.nome else "Comprador",
+                 "last_name": usuario.nome.split()[-1] if usuario.nome and len(usuario.nome.split()) > 1 else "", 
+                 "identification": {
+                    "type": "CPF",
+                    "number": dados.get('cpf', '00000000000'), 
+                 },
                  "address": {
                     "zip_code": endereco.cep.replace('-', ''),
                     "street_name": endereco.rua,
@@ -122,10 +133,31 @@ class MercadoPagoGateway(IGatewayPagamento):
              },
         }
         
-        # Simula a mesma lógica de chamada de API do Pix
-        transacao_pagamento = self._processar_pix(pedido, usuario, dados)
-        # Ajusta o status para garantir a consistência se houver mapeamento diferente
-        return transacao_pagamento
+        try:
+            url = f"{self.api_base_url}/payments"
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            
+            data = response.json()
+            mp_status = data.get("status")
+            transacao_id = data.get("id")
+            
+            if mp_status in ["pending", "in_process"]:
+                url_pagamento = data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
+                
+                return TransacaoPagamento(
+                    referencia_externa=str(transacao_id),
+                    valor=pedido.total_pedido,
+                    status_pagamento=self._STATUS_MAP.get(mp_status, "PENDENTE"),
+                    data_criacao=datetime.now(),
+                    url_pagamento=url_pagamento
+                )
+            else:
+                raise PagamentoFalhouError(f"Pagamento Boleto recusado. Status MP: {mp_status}")
+
+        except requests.exceptions.RequestException as e:
+            raise PagamentoFalhouError(f"Erro de conexão com a API do Mercado Pago: {e}")
+
 
     def _processar_cartao(self, pedido: Pedido, usuario: Usuario, dados: dict) -> TransacaoPagamento:
         """
@@ -171,7 +203,7 @@ class MercadoPagoGateway(IGatewayPagamento):
                 referencia_externa=str(transacao_id),
                 valor=pedido.total_pedido,
                 status_pagamento=self._STATUS_MAP.get(mp_status, "REJEITADO"),
-                data_transacao=datetime.now(),
+                data_criacao=datetime.now(),
                 url_pagamento=None
             )
 
@@ -181,22 +213,23 @@ class MercadoPagoGateway(IGatewayPagamento):
 
     # --- MÉTODOS PÚBLICOS QUE IMPLEMENTAM O PROTOCOLO CORE ---
 
-    def processar_pagamento(self, pedido: Pedido, metodo: str, dados: dict) -> TransacaoPagamento:
+    def processar_pagamento(self, pedido: Pedido, metodo: str, usuario: Usuario, dados: dict) -> TransacaoPagamento:
         """
         Método unificado do Protocolo IGatewayPagamento.
         Despacha a chamada para o método de pagamento específico.
         """
-        usuario = dados.get('usuario')
         endereco = dados.get('endereco')
         
-        if not usuario or not endereco:
-             raise PagamentoFalhouError("Dados de Usuário ou Endereço ausentes para processamento do pagamento.")
+        if not usuario:
+             raise PagamentoFalhouError("Dados de Usuário ausentes para processamento do pagamento.")
 
         metodo_upper = metodo.upper()
 
         if metodo_upper == "PIX":
             return self._processar_pix(pedido, usuario, dados)
         elif metodo_upper == "BOLETO":
+            if not endereco:
+                raise PagamentoFalhouError("Endereço de cobrança ausente para Boleto.")
             return self._processar_boleto(pedido, usuario, endereco, dados)
         elif metodo_upper == "CARTAO":
             return self._processar_cartao(pedido, usuario, dados)
@@ -228,7 +261,7 @@ class MercadoPagoGateway(IGatewayPagamento):
                 referencia_externa=transacao_id,
                 valor=valor,
                 status_pagamento=core_status,
-                data_transacao=datetime.now() # Data da verificação
+                data_criacao=datetime.now() # Data da verificação
             )
             
         except requests.exceptions.RequestException as e:
@@ -261,6 +294,7 @@ class GroqGateway:
             response.raise_for_status()
             
             data = response.json()
+            # Certifica-se de que a data_criacao está sendo atribuída corretamente
             return data["choices"][0]["message"]["content"]
             
         except requests.exceptions.RequestException as e:

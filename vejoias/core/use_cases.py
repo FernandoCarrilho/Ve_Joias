@@ -1,11 +1,6 @@
-"""
-Camada Core: Casos de Uso (Use Cases)
-
-Contém toda a lógica de negócio principal do sistema e coordena 
-as interações entre Entidades e Protocolos (Interfaces).
-"""
+import uuid
 from .entities import (
-    Usuario, Joia, Carrinho, ItemCarrinho, Pedido, Endereco, TransacaoPagamento
+    Usuario, Joia, Carrinho, CarrinhoItem, Pedido, Endereco, TransacaoPagamento, ItemPedido
 )
 from .exceptions import (
     EstoqueInsuficienteError, 
@@ -15,7 +10,7 @@ from .exceptions import (
     StatusInvalidoError,
     PedidoNaoEncontradoError
 )
-from typing import Protocol, List, Optional
+from typing import Protocol, List, Optional, Dict
 from decimal import Decimal
 from datetime import datetime
 
@@ -26,8 +21,8 @@ from datetime import datetime
 # 1.1 Repositórios (Persistência)
 
 class IRepositorioJoias(Protocol):
-    """Protocolo para a persistência de Joias, alinhado com JoiaRepositoryInterface."""
-    def buscar_por_id(self, joia_id: int) -> Optional[Joia]: ...
+    """Protocolo para a persistência de Joias."""
+    def buscar_por_id(self, joia_id: str) -> Optional[Joia]: ...
     def buscar_por_criterios(
         self, 
         em_estoque: bool, 
@@ -35,29 +30,29 @@ class IRepositorioJoias(Protocol):
         categoria_slug: Optional[str] = None
     ) -> List[Joia]: ...
     def salvar(self, joia: Joia) -> Joia: ...
-    def deletar(self, joia_id: int): ...
+    def deletar(self, joia_id: str): ...
+    # Método necessário para o Use Case de Checkout:
+    def atualizar_estoque(self, joia_id: str, quantidade: int): ...
 
 class IRepositorioCarrinhos(Protocol):
-    """Protocolo para a persistência de Carrinhos, alinhado com CarrinhoRepositoryInterface."""
-    # O repositório DEVE criar um carrinho se não existir.
+    """Protocolo para a persistência de Carrinhos."""
     def buscar_por_usuario(self, usuario: Usuario) -> Carrinho: ... 
     def salvar(self, carrinho: Carrinho) -> Carrinho: ...
     def limpar_carrinho(self, usuario: Usuario): ...
 
 class IRepositorioPedidos(Protocol):
-    """Protocolo para a persistência de Pedidos, alinhado com PedidoRepositoryInterface."""
+    """Protocolo para a persistência de Pedidos."""
     def salvar(self, pedido: Pedido) -> Pedido: ...
-    def buscar_por_id(self, id: int) -> Optional[Pedido]: ...
+    def buscar_por_id(self, id: str) -> Optional[Pedido]: ...
     def listar(self, usuario: Optional[Usuario] = None) -> List[Pedido]: ...
-    # Método necessário para o Use Case de atualização de status via Webhook
     def buscar_por_transacao_id(self, transacao_id: str) -> Optional[Pedido]: ... 
 
 
 # 1.2 Gateways (Serviços Externos)
 
 class IGatewayPagamento(Protocol):
-    """Protocolo para serviços externos de pagamento, alinhado com PagamentoGatewayInterface."""
-    def processar_pagamento(self, pedido: Pedido, metodo: str, dados: dict) -> TransacaoPagamento: ...
+    """Protocolo para serviços externos de pagamento."""
+    def processar_pagamento(self, pedido: Pedido, metodo: str, usuario: Usuario, dados: dict) -> TransacaoPagamento: ...
     def verificar_status(self, transacao_id: str) -> TransacaoPagamento: ...
 
 
@@ -82,13 +77,12 @@ class AdicionarItemAoCarrinho:
         self.repo_carrinho = repo_carrinho
         self.repo_joias = repo_joias
         
-    def execute(self, usuario: Usuario, joia_id: int, quantidade: int) -> Carrinho:
+    def execute(self, usuario: Usuario, joia_id: str, quantidade: int) -> Carrinho:
         joia = self.repo_joias.buscar_por_id(joia_id)
         
         if not joia:
             raise ItemNaoEncontradoError(f"Jóia ID {joia_id} não encontrada.")
 
-        # O carrinho é sempre retornado, o repositório garante a criação se não existir.
         carrinho = self.repo_carrinho.buscar_por_usuario(usuario)
         
         # Encontra o item, se existir
@@ -106,13 +100,12 @@ class AdicionarItemAoCarrinho:
                 quantidade_solicitada=quantidade_total_solicitada
             )
         
-        # Atualiza ou adiciona o item
+        # Atualiza ou adiciona o item. 
+        # O snapshot de preço não é salvo aqui; ele é tirado apenas no checkout.
         if item_existente:
             item_existente.quantidade = quantidade_total_solicitada
         else:
-            # Ao adicionar um novo item, usamos apenas o joia_id e a quantidade. 
-            # O preço é derivado via método do Carrinho/ItemCarrinho ou no Repositório.
-            carrinho.itens.append(ItemCarrinho(joia_id=joia.id, quantidade=quantidade))
+            carrinho.itens.append(CarrinhoItem(joia_id=joia.id, quantidade=quantidade))
             
         return self.repo_carrinho.salvar(carrinho)
 
@@ -122,7 +115,7 @@ class RemoverItemDoCarrinho:
     def __init__(self, repo_carrinho: IRepositorioCarrinhos):
         self.repo_carrinho = repo_carrinho
 
-    def execute(self, usuario: Usuario, joia_id: int) -> Carrinho:
+    def execute(self, usuario: Usuario, joia_id: str) -> Carrinho:
         carrinho = self.repo_carrinho.buscar_por_usuario(usuario)
         
         if not carrinho.itens:
@@ -139,8 +132,7 @@ class RemoverItemDoCarrinho:
 
 class CriarPedido:
     """
-    Cria um pedido, processa o pagamento e delega o gerenciamento de estoque 
-    e a limpeza do carrinho à camada de Infraestrutura.
+    Cria um pedido, processa o pagamento e garante o snapshot de preços.
     """
     def __init__(
         self, 
@@ -148,13 +140,15 @@ class CriarPedido:
         pedido_repo: IRepositorioPedidos, 
         pagamento_gateway: IGatewayPagamento,
         whatsapp_gateway: IWhatsappGateway, 
-        email_service: IEmailService
+        email_service: IEmailService,
+        repo_joias: IRepositorioJoias # INJEÇÃO NECESSÁRIA PARA SNAPSHOT E ESTOQUE
     ):
         self.carrinho_repo = carrinho_repo
         self.pedido_repo = pedido_repo
         self.pagamento_gateway = pagamento_gateway
         self.whatsapp_gateway = whatsapp_gateway
         self.email_service = email_service
+        self.repo_joias = repo_joias
 
     def execute(
         self, 
@@ -170,54 +164,91 @@ class CriarPedido:
         if not carrinho.itens:
             raise CarrinhoVazioError("Não é possível criar um pedido com um carrinho vazio.")
 
-        # 1. Monta a Entidade Pedido (snapshot dos dados)
-        # NOTA: O cálculo do total deve ser feito aqui na Core, para validação.
-        total = carrinho.calcular_total() 
+        # Armazenamento temporário para joias e total
+        joias_compradas: Dict[str, Joia] = {}
+        itens_pedido: List[ItemPedido] = []
+        total_calculado = Decimal('0.00')
         
-        # Prepara a entidade Pedido inicial (status será atualizado após pagamento)
+        # 1. Realiza o Snapshot e a Checagem de Estoque Final
+        for item_carrinho in carrinho.itens:
+            joia = self.repo_joias.buscar_por_id(item_carrinho.joia_id)
+            
+            if not joia:
+                raise ItemNaoEncontradoError(f"Jóia ID {item_carrinho.joia_id} não encontrada no catálogo.")
+            
+            if joia.estoque < item_carrinho.quantidade:
+                raise EstoqueInsuficienteError(
+                    joia_id=joia.id,
+                    estoque_atual=joia.estoque,
+                    quantidade_solicitada=item_carrinho.quantidade
+                )
+            
+            # Cria o ItemPedido (Snapshot imutável)
+            item_snapshot = ItemPedido(
+                joia_id=joia.id,
+                nome_joia=joia.nome,
+                preco_unitario=joia.preco, # Preço atual no momento do checkout
+                quantidade=item_carrinho.quantidade
+            )
+            
+            itens_pedido.append(item_snapshot)
+            total_calculado += item_snapshot.calcular_subtotal()
+            joias_compradas[joia.id] = joia # Salva referência para redução de estoque
+
+        # 2. Prepara a Entidade Pedido inicial
         pedido_inicial = Pedido(
-            id=None,
             usuario_id=usuario.id,
             data_pedido=datetime.now(),
-            status="AGUARDANDO_PAGAMENTO", # Status inicial antes de tentar o gateway
-            total_pedido=total,
+            status="AGUARDANDO_PAGAMENTO",
+            total_pedido=total_calculado,
             tipo_pagamento=tipo_pagamento.upper(),
             endereco_entrega=endereco_entrega,
             telefone_whatsapp=numero_telefone,
-            itens=carrinho.itens_para_pedido() # Cria ItemPedido com o snapshot de preço/nome
+            itens=itens_pedido # Lista de snapshots
         )
         
-        # 2. Processa o Pagamento via Gateway
+        # 3. Processa o Pagamento via Gateway
         try:
+            # Passa o usuário e o pedido para o gateway (necessário para PIX/Boleto)
             transacao: TransacaoPagamento = self.pagamento_gateway.processar_pagamento(
                 pedido=pedido_inicial, 
                 metodo=tipo_pagamento.upper(), 
+                usuario=usuario,
                 dados=dados_pagamento
             )
         except PagamentoFalhouError as e:
-            # Não salva nada, apenas lança o erro para a camada de Aplicação
             raise PagamentoFalhouError(f"Pagamento rejeitado: {str(e)}")
 
-        # 3. Finaliza a Entidade Pedido
-        pedido_inicial.status = transacao.status_pagamento
+        # 4. Finaliza a Entidade Pedido
+        # O status inicial é definido pela resposta do gateway
+        pedido_inicial.status = transacao.status_pagamento 
         pedido_inicial.transacao_id = transacao.referencia_externa
         
-        # 4. Salva o Pedido, reduz o estoque (Infraestrutura) e limpa o carrinho
+        # 5. Salva o Pedido e reduz o estoque (A Infraestrutura deve garantir a transação)
         try:
             pedido_final = self.pedido_repo.salvar(pedido_inicial)
+            
+            # Reduz o estoque APENAS após o pedido ser salvo com status inicial
+            for item in pedido_inicial.itens:
+                self.repo_joias.atualizar_estoque(item.joia_id, item.quantidade)
+                
             self.carrinho_repo.limpar_carrinho(usuario)
-        except EstoqueInsuficienteError as e:
-             # Se a Infra falhar na redução de estoque, o Use Case reverte a transação se necessário
-             # e lança o erro
-             raise EstoqueInsuficienteError(str(e))
+            
+        except Exception as e:
+             # Em um sistema real, aqui haveria um processo de reversão de transação/estoque
+             raise Exception(f"Falha na persistência ou redução de estoque: {e}")
         
-        # 5. Notificações (Pode falhar, mas o pedido já foi salvo)
+        # 6. Notificações
         try:
+            # Se a transação exigir ação (PIX/Boleto), a notificação deve incluir os detalhes
             self.email_service.enviar_confirmacao_pedido(pedido_final)
             self.whatsapp_gateway.enviar_confirmacao_pedido(pedido_final, numero_telefone)
         except Exception as e:
             # Em produção, você logaria isso.
             print(f"Alerta: Falha ao enviar notificações para Pedido {pedido_final.id}: {e}")
+        
+        # Adiciona os detalhes da transação ao pedido final para retorno ao cliente
+        setattr(pedido_final, 'transacao', transacao)
         
         return pedido_final
 
@@ -245,7 +276,6 @@ class AtualizarStatusPedidoPorTransacao:
         "PENDENTE": "PENDENTE",
         "REJEITADO": "CANCELADO",
         "ESTORNADO": "CANCELADO",
-        # Adicionar outros mapeamentos necessários
     }
 
     def execute(self, transacao_id: str):
@@ -277,6 +307,8 @@ class AtualizarStatusPedidoPorTransacao:
             # 5. Notificações
             if novo_status_pedido == "PAGO":
                 try:
+                    # O email e WhatsApp de confirmação de pagamento deve ser enviado APENAS quando
+                    # o status muda de PENDENTE para PAGO via webhook.
                     self.whatsapp_gateway.enviar_aprovacao_pagamento(pedido, pedido.telefone_whatsapp)
                 except Exception as e:
                     print(f"Alerta: Falha ao enviar WhatsApp de aprovação para Pedido {pedido.id}: {e}")
@@ -298,8 +330,6 @@ class ListarPedidos:
         """
         Retorna uma lista de pedidos. Se usuário for fornecido, lista apenas os dele.
         """
-        # A complexidade de filtragem por status deve estar na query do repositório,
-        # mas aqui delegamos a listagem genérica.
         return self.pedido_repo.listar(usuario=usuario)
     
 
@@ -310,7 +340,7 @@ class BuscarPedidoPorId:
     def __init__(self, pedido_repo: IRepositorioPedidos):
         self.pedido_repo = pedido_repo
 
-    def execute(self, pedido_id: int) -> Optional[Pedido]:
+    def execute(self, pedido_id: str) -> Optional[Pedido]:
         """
         Retorna a Entidade Pedido ou None se não for encontrado.
         """
@@ -329,7 +359,7 @@ class AtualizarStatusManual:
         self.email_service = email_service
         self.whatsapp_gateway = whatsapp_gateway 
 
-    def execute(self, pedido_id: int, novo_status: str) -> Pedido:
+    def execute(self, pedido_id: str, novo_status: str) -> Pedido:
         
         novo_status_upper = novo_status.upper()
         
@@ -350,10 +380,49 @@ class AtualizarStatusManual:
         
         pedido_final = self.pedido_repo.salvar(pedido)
         
-        # Lógica de Notificação Pós-Status
+        # Lógica de Notificação Pós-Status (Implementação simplificada)
         if novo_status_upper in ["PROCESSANDO", "ENVIADO", "ENTREGUE", "CANCELADO"]:
             # Em um sistema real, aqui você chamaria métodos específicos nos gateways
             # Ex: self.whatsapp_gateway.enviar_status_mudanca(pedido_final, novo_status_upper)
             print(f"Notificação simulada de mudança de status para {novo_status_upper}")
 
         return pedido_final
+
+
+class BuscarJoias:
+    """
+    Use Case para buscar e listar joias, permitindo filtros e busca textual.
+    """
+    def __init__(self, repo_joias: IRepositorioJoias):
+        self.repo_joias = repo_joias
+
+    def execute(
+        self, 
+        em_estoque: bool = True, 
+        busca: Optional[str] = None, 
+        categoria_slug: Optional[str] = None
+    ) -> List[Joia]:
+        """
+        Retorna uma lista de Joias filtrada pelos critérios fornecidos.
+        """
+        return self.repo_joias.buscar_por_criterios(
+            em_estoque=em_estoque,
+            busca=busca,
+            categoria_slug=categoria_slug
+        )
+
+class BuscarJoiaPorId:
+    """
+    Use Case para buscar uma joia específica pelo seu ID.
+    """
+    def __init__(self, repo_joias: IRepositorioJoias):
+        self.repo_joias = repo_joias
+
+    def execute(self, joia_id: str) -> Joia:
+        """
+        Retorna a Entidade Joia. Levanta exceção se não for encontrada.
+        """
+        joia = self.repo_joias.buscar_por_id(joia_id)
+        if not joia:
+            raise ItemNaoEncontradoError(f"Jóia ID {joia_id} não encontrada.")
+        return joia

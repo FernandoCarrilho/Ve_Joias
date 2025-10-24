@@ -371,6 +371,7 @@ PEDIDOS_DB: Dict[str, Pedido] = {}
 class JoiaRepository(IRepositorioJoias):
     """
     Implementação do Repositório de Joias usando armazenamento in-memory (JOIAS_DB).
+    Implementa IRepositorioJoias.
     """
     
     def buscar_por_id(self, joia_id: str) -> Optional[Joia]:
@@ -378,13 +379,53 @@ class JoiaRepository(IRepositorioJoias):
         return JOIAS_DB.get(joia_id)
 
     def buscar_todos(self) -> List[Joia]:
-        """Retorna todas as joias disponíveis."""
+        """Método auxiliar que lista todas as joias (não faz parte do protocolo, mas é útil)."""
         return list(JOIAS_DB.values())
 
-    # Método adicional para simular a atualização do estoque após um pedido
+    def buscar_por_criterios(
+        self, 
+        em_estoque: bool = True, 
+        busca: Optional[str] = None, 
+        categoria_slug: Optional[str] = None
+    ) -> List[Joia]:
+        """Implementa IRepositorioJoias. Busca joias filtrando por critérios."""
+        
+        resultados = []
+        for joia in JOIAS_DB.values():
+            if em_estoque and joia.estoque <= 0:
+                continue
+            
+            # Simulação básica de busca
+            if busca and busca.lower() not in joia.nome.lower():
+                continue
+                
+            # Simulação básica de categoria (não implementada na entidade Joia, mas mantida para o contrato)
+            if categoria_slug and categoria_slug not in joia.nome:
+                 continue
+
+            resultados.append(joia)
+            
+        return resultados
+
+    def salvar(self, joia: Joia) -> Joia:
+        """Implementa IRepositorioJoias. Salva ou atualiza uma joia."""
+        if not joia.id:
+            joia.id = str(uuid.uuid4())
+        
+        JOIAS_DB[joia.id] = joia
+        return joia
+
+    def deletar(self, joia_id: str):
+        """Implementa IRepositorioJoias. Remove uma joia."""
+        if joia_id in JOIAS_DB:
+            del JOIAS_DB[joia_id]
+
+    # Método para simular a atualização do estoque após um pedido (necessário ao Use Case)
     def atualizar_estoque(self, joia_id: str, quantidade: int) -> None:
         """Diminui o estoque da joia após uma compra."""
         joia = JOIAS_DB.get(joia_id)
+        # Assumindo que a verificação de estoque é feita no Use Case,
+        # aqui apenas realizamos a atualização.
         if joia and joia.estoque >= quantidade:
             joia.estoque -= quantidade
             # Em um DB real, isto seria um 'UPDATE'
@@ -393,25 +434,29 @@ class JoiaRepository(IRepositorioJoias):
 class CarrinhoRepository(IRepositorioCarrinhos):
     """
     Implementação do Repositório de Carrinho usando armazenamento in-memory (CARINHOS_DB).
+    Implementa IRepositorioCarrinhos.
     """
     
-    def buscar_por_usuario_id(self, usuario_id: str) -> Carrinho:
+    def buscar_por_usuario(self, usuario: Usuario) -> Carrinho:
         """
-        Busca o carrinho de um usuário. Se não existir, retorna um novo carrinho.
+        Implementa IRepositorioCarrinhos. Busca o carrinho de um usuário. 
+        Se não existir, retorna um novo carrinho.
         """
+        usuario_id = usuario.id
         if usuario_id not in CARINHOS_DB:
             # Cria um carrinho vazio se não for encontrado (simula 'lazy loading')
             CARINHOS_DB[usuario_id] = Carrinho(usuario_id=usuario_id)
             
         return CARINHOS_DB[usuario_id]
 
-    def salvar(self, carrinho: Carrinho) -> None:
-        """Salva (ou atualiza) o estado do carrinho no 'banco de dados'."""
+    def salvar(self, carrinho: Carrinho) -> Carrinho:
+        """Implementa IRepositorioCarrinhos. Salva (ou atualiza) o estado do carrinho."""
         CARINHOS_DB[carrinho.usuario_id] = carrinho
-        # Em um DB real, isto seria uma operação de INSERT/UPDATE
+        return carrinho
 
-    def excluir(self, usuario_id: str) -> None:
-        """Remove o carrinho do usuário após o checkout."""
+    def limpar_carrinho(self, usuario: Usuario):
+        """Implementa IRepositorioCarrinhos. Remove o carrinho do usuário após o checkout."""
+        usuario_id = usuario.id
         if usuario_id in CARINHOS_DB:
             del CARINHOS_DB[usuario_id]
 
@@ -419,15 +464,16 @@ class CarrinhoRepository(IRepositorioCarrinhos):
 class PedidoRepository(IRepositorioPedidos):
     """
     Implementação do Repositório de Pedidos usando armazenamento in-memory (PEDIDOS_DB).
+    Implementa IRepositorioPedidos.
     """
     
     def buscar_por_id(self, pedido_id: str) -> Optional[Pedido]:
-        """Busca um pedido pelo seu ID."""
+        """Implementa IRepositorioPedidos. Busca um pedido pelo seu ID."""
         return PEDIDOS_DB.get(pedido_id)
 
-    def salvar(self, pedido: Pedido) -> None:
+    def salvar(self, pedido: Pedido) -> Pedido:
         """
-        Salva um novo pedido. Se o ID não existir, gera um novo.
+        Implementa IRepositorioPedidos. Salva um novo pedido. 
         Em um DB real, o ID seria gerado pelo banco.
         """
         if not pedido.id:
@@ -435,11 +481,24 @@ class PedidoRepository(IRepositorioPedidos):
             pedido.data_pedido = datetime.now()
             
         PEDIDOS_DB[pedido.id] = pedido
-        # Em um DB real, isto seria uma operação de INSERT/UPDATE
+        return pedido
 
-    def buscar_por_usuario_id(self, usuario_id: str) -> List[Pedido]:
-        """Retorna a lista de pedidos de um usuário específico."""
-        return [
-            pedido for pedido in PEDIDOS_DB.values() 
-            if pedido.usuario.id == usuario_id
-        ]
+    def listar(self, usuario: Optional[Usuario] = None) -> List[Pedido]:
+        """Implementa IRepositorioPedidos. Retorna a lista de pedidos, filtrada por usuário se fornecido."""
+        if usuario:
+            return [
+                pedido for pedido in PEDIDOS_DB.values() 
+                if pedido.usuario_id == usuario.id
+            ]
+        # Lista todos os pedidos se nenhum usuário for fornecido (para Admin)
+        return list(PEDIDOS_DB.values()) 
+
+    def buscar_por_transacao_id(self, transacao_id: str) -> Optional[Pedido]:
+        """
+        Implementa IRepositorioPedidos. Busca um pedido pelo ID de Transação,
+        crucial para o Use Case de Webhook/IPN.
+        """
+        return next(
+            (pedido for pedido in PEDIDOS_DB.values() if pedido.transacao_id == transacao_id),
+            None
+        )
