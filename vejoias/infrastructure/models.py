@@ -151,7 +151,8 @@ class Joia(models.Model):
     preco = models.DecimalField(max_digits=10, decimal_places=2)
     estoque = models.IntegerField(default=0)
     disponivel = models.BooleanField(default=True)
-    imagem = models.URLField(max_length=500, blank=True, null=True) # URL da imagem
+    # ALTERADO: De models.URLField para models.ImageField para suportar upload local/S3
+    imagem = models.ImageField(upload_to='joias/', blank=True, null=True) 
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='joias')
     subcategoria = models.ForeignKey(Subcategoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='joias')
     criado_em = models.DateTimeField(auto_now_add=True)

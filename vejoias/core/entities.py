@@ -1,131 +1,102 @@
-# vejoias/core/entities.py
-# Define as Entidades de Domínio puras, que encapsulam as regras de negócio
-# e são independentes de qualquer framework (como o Django ORM).
-
-from dataclasses import dataclass
-from typing import Optional, List
-from datetime import datetime
+from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import List, Optional
+from datetime import datetime
 
-# O uso de 'Decimal' é crucial para manter a precisão monetária.
+# ====================================================================
+# ENTIDADES - Objetos de Negócio com regras e dados
+# ====================================================================
 
-@dataclass(frozen=True)
+@dataclass
 class Endereco:
-    """Entidade que representa um endereço físico."""
-    cep: str
+    """Endereço de entrega ou cobrança."""
     rua: str
     numero: str
     bairro: str
     cidade: str
     estado: str
-    referencia: Optional[str] = None
-    principal: bool = False
-    id: Optional[int] = None
+    cep: str
+    complemento: Optional[str] = None
 
-@dataclass(frozen=True)
+@dataclass
 class Usuario:
-    """Entidade que representa um Usuário do sistema."""
+    """Entidade de Usuário."""
+    id: int # ID interno do sistema
+    nome: str
     email: str
-    first_name: str
-    last_name: str
-    id: Optional[int] = None
-    telefone: Optional[str] = None
-    cpf: Optional[str] = None
-    is_active: bool = True
-    is_staff: bool = False
-    is_superuser: bool = False
+    # Adicionar outros dados de perfil conforme necessário
 
-@dataclass(frozen=True)
-class Categoria:
-    """Entidade que representa uma Categoria de produto."""
-    nome: str
-    slug: str
-    id: Optional[int] = None
-
-@dataclass(frozen=True)
-class Subcategoria:
-    """Entidade que representa uma Subcategoria de produto."""
-    nome: str
-    slug: str
-    categoria_id: int
-    id: Optional[int] = None
-
-@dataclass(frozen=True)
+@dataclass
 class Joia:
-    """Entidade que representa um produto (Joia) na loja."""
+    """Entidade de Joia (Produto)."""
+    id: int
     nome: str
+    descricao: str
     preco: Decimal
     estoque: int
-    id: Optional[int] = None
-    descricao: Optional[str] = None
-    disponivel: bool = True
-    imagem: Optional[str] = None
-    categoria_id: Optional[int] = None
-    subcategoria_id: Optional[int] = None
-    criado_em: Optional[datetime] = None
-    atualizado_em: Optional[datetime] = None
+    categoria_slug: str
+    data_criacao: datetime = field(default_factory=datetime.now)
 
-@dataclass(frozen=True)
+@dataclass
 class ItemCarrinho:
-    """Entidade que representa um item dentro do Carrinho."""
+    """Item dentro do carrinho, referenciando a ID da Joia e a quantidade."""
     joia_id: int
     quantidade: int
-    id: Optional[int] = None
-    preco_unitario: Optional[Decimal] = None
-    subtotal: Optional[Decimal] = None
 
-@dataclass(frozen=True)
+@dataclass
 class Carrinho:
-    """Entidade que representa o Carrinho de Compras, contendo itens."""
-    itens: List[ItemCarrinho]
-    id: Optional[int] = None
-    usuario_id: Optional[int] = None
-    sessao_key: Optional[str] = None
-    data_criacao: Optional[datetime] = None
-    data_atualizacao: Optional[datetime] = None
+    """Entidade Carrinho de Compras."""
+    usuario_id: int
+    itens: List[ItemCarrinho] = field(default_factory=list)
 
-    @property
-    def total_carrinho(self) -> Decimal:
-        """Calcula o total baseado nos subtotais dos itens."""
-        return sum(item.subtotal for item in self.itens if item.subtotal is not None)
+    def calcular_total(self) -> Decimal:
+        """
+        Método placeholder. O cálculo real deve ser feito no Use Case CriarPedido
+        para buscar os preços atuais das Joias no Repositório.
+        """
+        return Decimal('0.00')
 
-@dataclass(frozen=True)
-class ItemPedido:
-    """Entidade que representa um item dentro de um Pedido (snapshot de dados)."""
-    joia_nome: str
-    joia_preco: Decimal
-    quantidade: int
-    subtotal: Decimal
-    id: Optional[int] = None
-    pedido_id: Optional[int] = None
+    def itens_para_pedido(self) -> List['ItemPedido']:
+        """
+        Método placeholder. A criação do snapshot ItemPedido será feita no 
+        Use Case CriarPedido após buscar os preços.
+        """
+        return []
 
-@dataclass(frozen=True)
+@dataclass
 class TransacaoPagamento:
-    """Entidade que representa uma transação de pagamento."""
-    pedido_id: int
+    """Resultado retornado pelo IGatewayPagamento após processar/verificar."""
+    referencia_externa: str  # ID da transação no gateway
     valor: Decimal
+    status_pagamento: str    # Ex: "APROVADO", "PENDENTE", "REJEITADO"
     data_transacao: datetime
-    metodo_pagamento: str # Ex: 'PIX', 'Cartao', 'Boleto'
-    status_pagamento: str # Ex: 'Pendente', 'Aprovado', 'Falhou'
-    id: Optional[int] = None
-    referencia_externa: Optional[str] = None # ID da transação no gateway
+    url_pagamento: Optional[str] = None # Para PIX/Boleto
 
-@dataclass(frozen=True)
+@dataclass
+class ItemPedido:
+    """Snapshot de um item no momento em que o pedido foi criado (imutável)."""
+    joia_id: int
+    nome_joia: str
+    preco_unitario: Decimal
+    quantidade: int
+
+    def calcular_subtotal(self) -> Decimal:
+        return self.preco_unitario * self.quantidade
+
+@dataclass
 class Pedido:
-    """Entidade que representa um Pedido concluído."""
+    """Entidade de Pedido (Agregado Raiz)."""
+    id: Optional[int]
+    usuario_id: int
     data_pedido: datetime
     status: str
     total_pedido: Decimal
     tipo_pagamento: str
-    cep_entrega: str
-    rua_entrega: str
-    numero_entrega: str
-    bairro_entrega: str
-    cidade_entrega: str
-    estado_entrega: str
+    endereco_entrega: Endereco
     telefone_whatsapp: str
-    id: Optional[int] = None
-    usuario_id: Optional[int] = None
-    referencia_entrega: Optional[str] = None
-    itens: Optional[List[ItemPedido]] = None
-    transacao: Optional[TransacaoPagamento] = None
+    itens: List[ItemPedido] = field(default_factory=list)
+    transacao_id: Optional[str] = None # ID externa do pagamento
+
+    def calcular_total(self) -> Decimal:
+        """Recalcula o total a partir dos itens do snapshot (ItemPedido)."""
+        return sum(item.calcular_subtotal() for item in self.itens)

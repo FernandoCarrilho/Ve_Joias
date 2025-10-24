@@ -1,4 +1,3 @@
-# vejoias/urls.py
 """
 Configuração principal de URL do projeto Vejoias.
 
@@ -7,10 +6,13 @@ Este arquivo centraliza o roteamento, incluindo:
 2. Rotas da Loja (vejoias.presentation)
 3. Rotas de Autenticação (Recuperação de Senha)
 4. Rotas da Documentação da API (Swagger/Redoc)
+5. Rotas para API REST (vejoias.api)
 """
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
+from django.conf import settings # IMPORTADO para DEBUG
+from django.conf.urls.static import static # IMPORTADO para servir Mídia
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 
@@ -22,8 +24,13 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # ====================================================================
-    # ROTAS DE DOCUMENTAÇÃO DA API (DRF SPECTACULAR)
+    # ROTAS DE API E DOCUMENTAÇÃO
     # ====================================================================
+    
+    # Rota principal para a API
+    # Assumimos que haverá um app ou arquivo central de roteamento da API
+    # Exemplo: path('api/v1/', include('vejoias.api.urls')),
+    
      # 1. Rota para o arquivo Schema YAML (gerado automaticamente)
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     
@@ -60,3 +67,16 @@ urlpatterns = [
          name='password_reset_complete'),
          
 ]
+
+# ====================================================================
+# CONFIGURAÇÃO DE MÍDIA E ESTÁTICOS (APENAS EM AMBIENTE DE DESENVOLVIMENTO)
+# ====================================================================
+# ESSENCIAL para que fotos e arquivos de usuário funcionem com DEBUG=True
+if settings.DEBUG:
+    # Adiciona rotas para arquivos de mídia (upload de usuário)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    
+    # Adiciona rotas para arquivos estáticos (CSS, JS, etc.)
+    # Geralmente não é necessário, pois o Django serve estáticos automaticamente em DEBUG,
+    # mas está aqui por completude e caso o STATICFILES_DIRS seja usado.
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,153 +1,164 @@
-# Configuração da interface administrativa do Django para os modelos do Ve_Joias.
+"""
+Configuração do painel de administração para a camada de infraestrutura.
 
+Registra todos os modelos de dados (Usuário, Joia, Pedido, etc.) e aplica
+otimizações de visualização para o Django Admin.
+"""
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-# Importamos o modelo Usuario customizado (que contém os campos de Perfil)
-from vejoias.infrastructure.models import (
-    Joia, Categoria, Subcategoria, Pedido, ItemPedido, Usuario # <--- CORRIGIDO: Agora importa 'Usuario'
+from .models import (
+    Usuario, Endereco, Categoria, Subcategoria, Joia, 
+    Carrinho, ItemCarrinho, Pedido, ItemPedido
 )
+from django.utils.translation import gettext_lazy as _
 
 # ====================================================================
-# 1. ADMIN PERSONALIZADO PARA USUÁRIOS (CUSTOMIZANDO O MODELO 'Usuario')
+# 1. INLINES (Para visualização de modelos relacionados)
 # ====================================================================
 
-# Não precisamos mais de um Inline, pois os campos de perfil (telefone, cpf)
-# foram movidos diretamente para o modelo Usuario.
-
-@admin.register(Usuario)
-class UsuarioAdmin(BaseUserAdmin):
-    """Customização do modelo Usuario. Adiciona campos de perfil e usa email/senha."""
-    
-    # Define quais campos serão exibidos na listagem
-    list_display = (
-        'email', 
-        'first_name', 
-        'last_name', 
-        'is_staff', 
-        'is_active', 
-        'telefone', 
-        'cpf'
-    )
-    
-    # Define os campos visíveis no formulário de edição/criação
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ('Informações de Perfil', {'fields': ('telefone', 'cpf',)}),
-    )
-    
-    # Define os campos visíveis no formulário de criação de usuário
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Informações de Perfil', {'fields': ('telefone', 'cpf',)}),
-    )
-    
-    # O campo 'username' não existe mais no modelo Usuario, então ajustamos
-    # a pesquisa e ordenação para usar o 'email'.
-    search_fields = ('email', 'first_name', 'last_name')
-    ordering = ('email',)
-
-
-# ====================================================================
-# 2. ADMIN PARA CATEGORIAS
-# ====================================================================
+class EnderecoInline(admin.TabularInline):
+    """Exibe endereços dentro do formulário de edição de Usuário."""
+    model = Endereco
+    extra = 1
+    fields = ('cep', 'rua', 'numero', 'cidade', 'estado', 'principal')
 
 class SubcategoriaInline(admin.TabularInline):
-    """Permite editar Subcategorias diretamente na página da Categoria."""
+    """Exibe subcategorias dentro do formulário de edição de Categoria."""
     model = Subcategoria
     extra = 1
     prepopulated_fields = {'slug': ('nome',)}
 
+class ItemCarrinhoInline(admin.TabularInline):
+    """Exibe itens dentro do formulário de edição de Carrinho."""
+    model = ItemCarrinho
+    readonly_fields = ('subtotal',)
+    fields = ('joia', 'quantidade', 'subtotal')
+    extra = 0
+
+class ItemPedidoInline(admin.TabularInline):
+    """Exibe itens dentro do formulário de edição de Pedido."""
+    model = ItemPedido
+    readonly_fields = ('joia_nome', 'joia_preco', 'quantidade', 'subtotal')
+    fields = ('joia_nome', 'joia_preco', 'quantidade', 'subtotal')
+    extra = 0
+    can_delete = False
+    max_num = 0 # Não permite adicionar novos itens manualmente
+
+# ====================================================================
+# 2. ADMINS PERSONALIZADOS
+# ====================================================================
+
+@admin.register(Usuario)
+class UsuarioAdmin(BaseUserAdmin):
+    """
+    Personalização do Admin para o modelo Usuario.
+    Substitui o username por email e inclui campos de perfil.
+    """
+    inlines = (EnderecoInline,) # Adiciona Endereços in-line
+    
+    # Define os campos a serem exibidos na listagem
+    list_display = (
+        'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_admin', 'cpf', 'telefone'
+    )
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'is_admin', 'date_joined')
+    search_fields = ('email', 'first_name', 'last_name', 'cpf')
+    ordering = ('email',)
+    
+    # Define os campos a serem exibidos no formulário de edição
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'telefone', 'cpf')}),
+        (_('Permissions'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'is_admin', 'groups', 'user_permissions'),
+        }),
+        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+    )
+    
+    # Ajusta os add_fieldsets para inclusão dos campos customizados
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        (_('Informações de Perfil'), {'fields': ('telefone', 'cpf', 'is_admin')}),
+    )
+
+
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
+    """Admin para Categoria com subcategorias inline."""
     list_display = ('nome', 'slug')
-    inlines = [SubcategoriaInline]
     prepopulated_fields = {'slug': ('nome',)}
-    search_fields = ('nome',)
+    inlines = (SubcategoriaInline,)
 
-@admin.register(Subcategoria)
-class SubcategoriaAdmin(admin.ModelAdmin):
-    # O filtro foi ajustado para 'categoria', que é o nome do FK no modelo.
-    list_display = ('nome', 'categoria', 'slug') 
-    list_filter = ('categoria',)
-    prepopulated_fields = {'slug': ('nome',)}
-    search_fields = ('nome',)
-
-
-# ====================================================================
-# 3. ADMIN PARA PRODUTOS (JOIAS)
-# ====================================================================
 
 @admin.register(Joia)
 class JoiaAdmin(admin.ModelAdmin):
-    # Campos ajustados: 'data_criacao' -> 'criado_em', 'ativa' -> 'disponivel'
-    list_display = ('nome', 'preco', 'estoque', 'categoria', 'subcategoria', 'disponivel', 'criado_em')
-    list_filter = ('disponivel', 'categoria', 'subcategoria')
-    search_fields = ('nome', 'descricao', 'id')
-    ordering = ('nome',)
-    fieldsets = (
-        ('Informações Básicas', {
-            # Campo ajustado: 'imagem_url' -> 'imagem'
-            'fields': ('nome', 'descricao', 'preco', 'estoque', 'disponivel', 'imagem') 
-        }),
-        ('Classificação', {
-            # Campos removidos: 'material' e 'peso_gramas' (não estão no modelo Joia)
-            'fields': ('categoria', 'subcategoria'),
-        }),
+    """Admin para Joias (Produtos)."""
+    list_display = ('nome', 'preco_formatado', 'estoque', 'disponivel', 'categoria', 'subcategoria', 'criado_em')
+    list_filter = ('disponivel', 'categoria', 'subcategoria', 'criado_em')
+    search_fields = ('nome', 'descricao')
+    
+    # Campos que serão exibidos no formulário de edição
+    fields = (
+        ('nome', 'preco', 'estoque'),
+        ('categoria', 'subcategoria', 'disponivel'),
+        'descricao',
+        'imagem', # Para upload
     )
 
 
-# ====================================================================
-# 4. ADMIN PARA PEDIDOS
-# ====================================================================
+@admin.register(Carrinho)
+class CarrinhoAdmin(admin.ModelAdmin):
+    """Admin para Carrinhos de Compras."""
+    list_display = ('id', 'usuario', 'sessao_key', 'total_carrinho', 'data_atualizacao')
+    list_display_links = ('id',)
+    list_filter = ('data_criacao', 'data_atualizacao')
+    search_fields = ('usuario__email', 'sessao_key')
+    readonly_fields = ('total_carrinho',)
+    inlines = (ItemCarrinhoInline,)
+    
+    # Garante que o campo total_carrinho seja exibido no topo do formulário
+    fieldsets = (
+        (None, {
+            'fields': (('usuario', 'sessao_key'), 'total_carrinho', 'data_criacao', 'data_atualizacao')
+        }),
+    )
 
-class ItemPedidoInline(admin.TabularInline):
-    """Exibe os itens comprados dentro do detalhe do Pedido."""
-    model = ItemPedido
-    # Ajustando readonly_fields para refletir o modelo ItemPedido
-    readonly_fields = ('joia_nome', 'joia_preco', 'quantidade', 'subtotal')
-    extra = 0
-    can_delete = False
 
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
-    # Campos ajustados: 'data_criacao' -> 'data_pedido', 'total' -> 'total_pedido'
-    list_display = ('id', 'usuario', 'data_pedido', 'total_pedido', 'status', 'tipo_pagamento')
+    """Admin para Pedidos."""
+    list_display = ('id', 'usuario', 'data_pedido', 'status', 'total_pedido', 'tipo_pagamento')
     list_filter = ('status', 'tipo_pagamento', 'data_pedido')
-    search_fields = ('id', 'usuario__email', 'rua_entrega', 'cidade_entrega') 
-    date_hierarchy = 'data_pedido'
-    inlines = [ItemPedidoInline]
-    
-    # Ajustando readonly_fields para refletir os campos de endereço desagregados
-    readonly_fields = (
-        'usuario', 
-        'data_pedido', 
-        'total_pedido', 
-        'tipo_pagamento', 
-        'cep_entrega', 
-        'rua_entrega',
-        'numero_entrega',
-        'bairro_entrega',
-        'cidade_entrega',
-        'estado_entrega',
-        'referencia_entrega',
-        'telefone_whatsapp'
+    search_fields = ('usuario__email', 'id')
+    readonly_fields = ('total_pedido', 'data_pedido')
+    inlines = (ItemPedidoInline,)
+
+    fieldsets = (
+        (None, {
+            'fields': (('usuario', 'status'), 'data_pedido', 'total_pedido', 'tipo_pagamento')
+        }),
+        ('Endereço de Entrega (Snapshot)', {
+            'fields': (
+                ('cep_entrega', 'numero_entrega'),
+                ('rua_entrega', 'bairro_entrega'),
+                ('cidade_entrega', 'estado_entrega'),
+                'referencia_entrega',
+                'telefone_whatsapp'
+            ),
+            'description': 'Endereço e contato registrados no momento da compra.'
+        }),
     )
-
-    def save_model(self, request, obj, form, change):
-        """Permite que o administrador altere apenas o status do pedido."""
-        if not change:
-            # Não permitir criação manual de pedidos (apenas por checkout)
-            super().save_model(request, obj, form, change)
-        
-        if change:
-            try:
-                original_pedido = Pedido.objects.get(pk=obj.pk)
-                if original_pedido.status != obj.status:
-                    # Lógica para notificar o cliente sobre a mudança de status, se necessário
-                    pass 
-            except Pedido.DoesNotExist:
-                pass
-            
-            super().save_model(request, obj, form, change)
-
+    
+    # Bloqueia a criação manual de pedidos
     def has_add_permission(self, request):
-        """Impedir a criação de pedidos pela interface do Admin."""
         return False
+
+# 3. Registro dos modelos restantes (sem customização avançada)
+@admin.register(Endereco)
+class EnderecoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'rua', 'cidade', 'estado', 'principal')
+    list_filter = ('estado', 'principal')
+
+@admin.register(Subcategoria)
+class SubcategoriaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'categoria', 'slug')
+    list_filter = ('categoria',)
+    prepopulated_fields = {'slug': ('nome',)}

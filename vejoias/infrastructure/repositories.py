@@ -5,10 +5,15 @@ Esta camada traduz as operações abstratas definidas nas Interfaces da Core
 em chamadas concretas ao framework (Django ORM, APIs externas, etc.).
 """
 from typing import List, Optional
-from django.db.models import Q, F, Sum
+from typing import Dict
+import uuid
+from datetime import datetime
+from django.db.models import Q, F, Sum, Prefetch
 from django.db import transaction
+from django.db.utils import IntegrityError
 from decimal import Decimal
 import random # Para o Mock de Pagamento
+import json # Para lidar com o campo JSON de endereço no Pedido (se for o caso)
 
 # Importações da Camada CORE (ENTIDADES e INTERFACES)
 from vejoias.core.entities import (
@@ -19,7 +24,8 @@ from vejoias.core.interfaces import (
     JoiaRepositoryInterface, 
     CarrinhoRepositoryInterface, 
     PedidoRepositoryInterface, 
-    PagamentoGatewayInterface
+    PagamentoGatewayInterface,
+    BaseRepositoryInterface
 )
 from vejoias.core.exceptions import (
     JoiaNaoEncontradaError, 
@@ -29,87 +35,26 @@ from vejoias.core.exceptions import (
     PagamentoFalhouError
 )
 
-# Importações dos Modelos Django
-from vejoias.catalog.models import Joia as JoiaModel, Categoria as CategoriaModel
+# Importações dos Mapeadores (do próprio módulo de infraestrutura)
+from .mappers import (
+    JoiaMapper, EnderecoMapper, ItemCarrinhoMapper, CarrinhoMapper,
+    ItemPedidoMapper, PedidoMapper, UsuarioMapper, CategoriaMapper, SubcategoriaMapper
+)
 
-# Modelos do app Vendas - Removido ItemCarrinhoModel daqui
+from vejoias.core.use_cases import IRepositorioJoias, IRepositorioCarrinhos, IRepositorioPedidos
+
+# Importações dos Modelos Django
+# Assumimos a estrutura de módulos do repositório original para modelos
+from vejoias.catalog.models import Joia as JoiaModel, Categoria as CategoriaModel, Subcategoria as SubcategoriaModel
 from vejoias.vendas.models import ( 
     Pedido as PedidoModel, 
     ItemPedido as ItemPedidoModel, 
     Endereco as EnderecoModel
 )
-
-# Modelos do app Carrinho - Adicionado ItemCarrinhoModel aqui
 from vejoias.carrinho.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
-
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-
-
-# ====================================================================
-# MAPERS (Conversão Model <-> Entidade)
-# ====================================================================
-
-# Mappers de Entidade para Modelo (usados na escrita) e vice-versa (usados na leitura)
-
-def map_categoria_model_to_entity(model: CategoriaModel) -> Categoria:
-    """Converte CategoriaModel em Entidade Categoria."""
-    return Categoria(
-        id=model.id,
-        nome=model.nome,
-        slug=model.slug,
-        descricao=model.descricao
-    )
-
-def map_joia_model_to_entity(model: JoiaModel) -> Joia:
-    """Converte JoiaModel em Entidade Joia."""
-    return Joia(
-        id=model.id,
-        nome=model.nome,
-        descricao=model.descricao,
-        preco=float(model.preco),
-        estoque=model.estoque,
-        categoria=map_categoria_model_to_entity(model.categoria) if model.categoria else None,
-        material=model.material,
-        peso_gramas=float(model.peso_gramas) if model.peso_gramas else 0.0,
-        dimensoes=model.dimensoes,
-        imagem_url=model.imagem_url,
-        is_destaque=model.is_destaque
-    )
-
-def map_user_model_to_entity(user: User) -> Usuario:
-    """Converte Django User em Entidade Usuario (simplificado)."""
-    return Usuario(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        # Assume que o modelo User tem is_staff para admin
-        is_admin=user.is_staff 
-    )
-
-def map_endereco_model_to_entity(model: EnderecoModel) -> Endereco:
-    """Converte EnderecoModel em Entidade Endereco (usado em listagem de endereços)."""
-    return Endereco(
-        id=model.id,
-        usuario_id=model.usuario_id,
-        apelido=model.apelido,
-        cep=model.cep,
-        rua=model.rua,
-        numero=model.numero,
-        complemento=model.complemento,
-        bairro=model.bairro,
-        cidade=model.cidade,
-        estado=model.estado,
-    )
-
-def map_item_carrinho_model_to_entity(model: ItemCarrinhoModel) -> ItemCarrinho:
-    """Converte ItemCarrinhoModel em Entidade ItemCarrinho."""
-    return ItemCarrinho(
-        joia=map_joia_model_to_entity(model.joia),
-        quantidade=model.quantidade
-    )
 
 
 # ====================================================================
@@ -121,8 +66,9 @@ class JoiaRepositoryDjango(JoiaRepositoryInterface):
 
     def buscar_por_id(self, id: int) -> Optional[Joia]:
         try:
-            model = JoiaModel.objects.select_related('categoria').get(pk=id)
-            return map_joia_model_to_entity(model)
+            # Inclui categoria e subcategoria para o mapeamento completo
+            model = JoiaModel.objects.select_related('categoria', 'subcategoria').get(pk=id)
+            return JoiaMapper.to_entity(model)
         except JoiaModel.DoesNotExist:
             return None
 
@@ -133,7 +79,7 @@ class JoiaRepositoryDjango(JoiaRepositoryInterface):
         categoria_slug: Optional[str] = None
     ) -> List[Joia]:
         
-        qs = JoiaModel.objects.all().select_related('categoria')
+        qs = JoiaModel.objects.all().select_related('categoria', 'subcategoria')
         
         if em_estoque:
             qs = qs.filter(estoque__gt=0)
@@ -145,58 +91,38 @@ class JoiaRepositoryDjango(JoiaRepositoryInterface):
         if categoria_slug:
             qs = qs.filter(categoria__slug=categoria_slug)
             
-        return [map_joia_model_to_entity(model) for model in qs]
+        return [JoiaMapper.to_entity(model) for model in qs]
     
     @transaction.atomic
     def salvar(self, joia: Joia) -> Joia:
         """Salva ou atualiza uma Joia, convertendo a entidade para o modelo."""
-        categoria_model = None
-        if joia.categoria and joia.categoria.id:
-            try:
-                categoria_model = CategoriaModel.objects.get(pk=joia.categoria.id)
-            except CategoriaModel.DoesNotExist:
-                pass # Caso a categoria não exista, salva sem categoria
-                
-        # Atualiza ou cria o modelo
+        
+        model = None
         if joia.id:
             try:
                 model = JoiaModel.objects.get(pk=joia.id)
             except JoiaModel.DoesNotExist:
                 raise JoiaNaoEncontradaError(f"Joia ID {joia.id} não existe para atualização.")
                 
-            model.nome = joia.nome
-            model.descricao = joia.descricao
-            model.preco = Decimal(joia.preco)
-            model.estoque = joia.estoque
-            model.categoria = categoria_model
-            model.material = joia.material
-            model.peso_gramas = Decimal(joia.peso_gramas) if joia.peso_gramas else None
-            model.dimensoes = joia.dimensoes
-            model.imagem_url = joia.imagem_url
-            model.is_destaque = joia.is_destaque
-        else:
-            model = JoiaModel(
-                nome=joia.nome,
-                descricao=joia.descricao,
-                preco=Decimal(joia.preco),
-                estoque=joia.estoque,
-                categoria=categoria_model,
-                material=joia.material,
-                peso_gramas=Decimal(joia.peso_gramas) if joia.peso_gramas else None,
-                dimensoes=joia.dimensoes,
-                imagem_url=joia.imagem_url,
-                is_destaque=joia.is_destaque
-            )
-            
+        # Converte a entidade para o modelo e preenche os campos
+        model = JoiaMapper.to_model(joia, model)
+        
+        # O JoiaMapper.to_model preenche os IDs de FK (categoria_id, subcategoria_id).
+        # Não precisamos carregar os modelos de Categoria/Subcategoria aqui se o ORM suportar.
+        
         model.save()
-        joia.id = model.id # Garante que a entidade retorne com o ID
-        return joia
+        # Garante que a entidade retorne com o ID
+        return JoiaMapper.to_entity(model)
 
     def deletar(self, joia_id: int):
         try:
             JoiaModel.objects.get(pk=joia_id).delete()
         except JoiaModel.DoesNotExist:
             raise JoiaNaoEncontradaError(f"Joia ID {joia_id} não pode ser deletada, pois não existe.")
+            
+    # Adicionando o método buscar_por_id que faltou na interface (embora a JoiaRepositoryInterface não o exija, a BaseRepositoryInterface sim)
+    def buscar_por_id(self, id: int) -> Optional[Joia]:
+        return self.buscar_por_id(id)
 
 
 class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
@@ -204,63 +130,78 @@ class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
 
     def buscar_por_usuario(self, usuario: Usuario) -> Carrinho:
         try:
-            # Tenta encontrar o carrinho e pré-carrega os itens e as joias relacionadas
+            # Tenta encontrar o carrinho e pré-carrega os itens com as joias relacionadas
             carrinho_model = CarrinhoModel.objects.select_related('usuario').prefetch_related(
-                models.Prefetch(
-                    'itens',
-                    queryset=ItemCarrinhoModel.objects.select_related('joia__categoria')
+                # Usamos Prefetch para garantir que a joia e categoria/subcategoria sejam carregadas
+                Prefetch(
+                    'itemcarrinho_set', # Related name padrão ou definido no model
+                    queryset=ItemCarrinhoModel.objects.select_related('joia__categoria', 'joia__subcategoria'),
+                    to_attr='itens_list_for_mapper' # Nome do atributo para o mapper
                 )
             ).get(usuario_id=usuario.id)
         except CarrinhoModel.DoesNotExist:
-            # Cria um novo carrinho se não existir (regra da interface)
-            user_model = User.objects.get(pk=usuario.id)
-            carrinho_model = CarrinhoModel.objects.create(usuario=user_model)
+            # Se não houver carrinho, a regra é criar um novo
+            try:
+                user_model = User.objects.get(pk=usuario.id)
+                carrinho_model = CarrinhoModel.objects.create(usuario=user_model)
+            except User.DoesNotExist:
+                raise ValueError(f"Usuário ID {usuario.id} não encontrado para criar o carrinho.")
 
-        itens_entity = [
-            map_item_carrinho_model_to_entity(item_model)
-            for item_model in carrinho_model.itens.all()
-        ]
-        
-        return Carrinho(
-            id=carrinho_model.id,
-            usuario=usuario,
-            itens=itens_entity
-        )
+        # O CarrinhoMapper precisa que os itens estejam carregados (o prefetch ajuda nisso)
+        # O mapper irá converter os ItemCarrinhoModels em ItemCarrinhoEntities.
+        return CarrinhoMapper.to_entity(carrinho_model)
 
     @transaction.atomic
     def salvar(self, carrinho: Carrinho) -> Carrinho:
         """Salva a Entidade Carrinho, sincronizando os ItemCarrinhoModels."""
         
         if not carrinho.id:
-            # Isso só acontece se o mapeamento falhar, pois buscar_por_usuario já deve criar um ID.
-            raise ValueError("Carrinho deve ter um ID para ser salvo.")
+            raise ValueError("Carrinho deve ter um ID para ser salvo (obtido via buscar_por_usuario).")
         
-        carrinho_model = CarrinhoModel.objects.get(pk=carrinho.id)
+        try:
+            carrinho_model = CarrinhoModel.objects.get(pk=carrinho.id)
+        except CarrinhoModel.DoesNotExist:
+            raise ItemNaoEncontradoError(f"Carrinho ID {carrinho.id} não existe.")
         
-        # 1. Identifica os Joia IDs que devem estar no carrinho
-        joia_ids_atuais = {item.joia.id: item.quantidade for item in carrinho.itens}
+        # 1. Identifica os Joia IDs que devem estar no carrinho e suas quantidades
+        joia_ids_atuais = {item.joia_id: item.quantidade for item in carrinho.itens}
         
-        # 2. Atualiza ou Cria os itens existentes/novos
-        for joia_id, quantidade in joia_ids_atuais.items():
-            joia_model = JoiaModel.objects.get(pk=joia_id)
+        # 2. Sincroniza os itens:
+        
+        # Obtém IDs dos itens existentes para exclusão
+        itens_existentes = ItemCarrinhoModel.objects.filter(carrinho=carrinho_model)
+        
+        # Lista para armazenar novos itens (para criação em massa se for o caso)
+        itens_a_salvar = []
+        
+        for item_entity in carrinho.itens:
+            # Tenta encontrar o ItemCarrinhoModel existente
+            try:
+                item_model = itens_existentes.get(joia_id=item_entity.joia_id)
+                # Atualiza a quantidade
+                if item_model.quantidade != item_entity.quantidade:
+                    item_model.quantidade = item_entity.quantidade
+                    item_model.save()
+            except ItemCarrinhoModel.DoesNotExist:
+                # Cria um novo ItemCarrinhoModel usando o Mapper (para setar joia_id e quantidade)
+                item_model = ItemCarrinhoMapper.to_model(item_entity, carrinho_id=carrinho.id)
+                itens_a_salvar.append(item_model)
+                
+        if itens_a_salvar:
+            ItemCarrinhoModel.objects.bulk_create(itens_a_salvar)
             
-            # Use get_or_create para evitar race conditions ou erros de unicidade
-            item, created = ItemCarrinhoModel.objects.get_or_create(
-                carrinho=carrinho_model, 
-                joia=joia_model,
-                defaults={'quantidade': quantidade}
-            )
-            
-            if not created:
-                item.quantidade = quantidade
-                item.save()
-
         # 3. Deleta itens que foram removidos da entidade
+        joias_para_excluir_ids = [
+            item.joia_id for item in itens_existentes
+            if item.joia_id not in joia_ids_atuais
+        ]
         ItemCarrinhoModel.objects.filter(
-            carrinho=carrinho_model
-        ).exclude(joia_id__in=joia_ids_atuais.keys()).delete()
+            carrinho=carrinho_model, 
+            joia_id__in=joias_para_excluir_ids
+        ).delete()
         
         carrinho_model.save()
+        # Retorna o carrinho atualizado (usamos o ID e os itens originais da entidade que foi salva)
         return carrinho
 
     @transaction.atomic
@@ -271,124 +212,75 @@ class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
             ItemCarrinhoModel.objects.filter(carrinho=carrinho_model).delete()
             carrinho_model.save()
         except CarrinhoModel.DoesNotExist:
-            # Se o carrinho não existe, não há o que limpar
-            pass
+            pass # Se o carrinho não existe, não há o que limpar
 
 
-class PedidoRepositoryDjango(PedidoRepositoryInterface):
+class PedidoRepositoryDjango(BaseRepositoryInterface): # Mudança da interface para a base, pois a PedidoRepositoryInterface tem métodos diferentes
     """Implementação do PedidoRepository usando o Django ORM."""
-
-    def _map_pedido_model_to_entity(self, model: PedidoModel) -> Pedido:
-        """Converte PedidoModel em Entidade Pedido, incluindo itens e endereço."""
-        # 1. Mapeia Endereço (armazenado como JSON no modelo)
-        endereco_data = model.endereco_entrega_json
-        endereco_entity = Endereco(
-            # O ID do endereço na entidade Pedido é o snapshot JSON.
-            cep=endereco_data.get('cep', ''),
-            rua=endereco_data.get('rua', ''),
-            numero=endereco_data.get('numero', ''),
-            complemento=endereco_data.get('complemento', ''),
-            bairro=endereco_data.get('bairro', ''),
-            cidade=endereco_data.get('cidade', ''),
-            estado=endereco_data.get('estado', ''),
-        )
-        
-        # 2. Mapeia Usuário (precisamos buscar o modelo Django para o mapeamento completo)
-        user_model = model.usuario
-        usuario_entity = map_user_model_to_entity(user_model)
-
-        # 3. Mapeia Itens
-        itens_entity = [
-            ItemPedido(
-                joia_id=item_model.joia_id,
-                nome_joia=item_model.nome_joia,
-                preco_unitario=float(item_model.preco_unitario),
-                quantidade=item_model.quantidade
-            ) 
-            for item_model in model.itens.all()
-        ]
-        
-        # 4. Cria a Entidade Pedido
-        return Pedido(
-            id=model.id,
-            usuario=usuario_entity,
-            itens=itens_entity,
-            endereco_entrega=endereco_entity,
-            valor_total=float(model.valor_total),
-            status=model.status,
-            data_pedido=model.data_pedido
-        )
 
     def buscar_por_id(self, id: int) -> Optional[Pedido]:
         try:
+            # Pré-carrega usuário e itens
             model = PedidoModel.objects.select_related('usuario').prefetch_related('itens').get(pk=id)
-            return self._map_pedido_model_to_entity(model)
+            return PedidoMapper.to_entity(model)
         except PedidoModel.DoesNotExist:
             return None
 
     def listar(self, usuario: Optional[Usuario] = None) -> List[Pedido]:
-        qs = PedidoModel.objects.all().select_related('usuario').prefetch_related('itens')
+        qs = PedidoModel.objects.all().select_related('usuario')
         if usuario:
             qs = qs.filter(usuario_id=usuario.id)
             
+        # Não pré-carrega itens na listagem para performance, apenas no buscar_por_id.
         qs = qs.order_by('-data_pedido')
         
-        return [self._map_pedido_model_to_entity(model) for model in qs]
+        return [PedidoMapper.to_entity(model) for model in qs]
 
     @transaction.atomic
     def salvar(self, pedido: Pedido) -> Pedido:
         """Salva a Entidade Pedido, incluindo os itens."""
         
-        # 1. Prepara dados do PedidoModel
-        endereco_json = {
-            'cep': pedido.endereco_entrega.cep,
-            'rua': pedido.endereco_entrega.rua,
-            'numero': pedido.endereco_entrega.numero,
-            'complemento': pedido.endereco_entrega.complemento,
-            'bairro': pedido.endereco_entrega.bairro,
-            'cidade': pedido.endereco_entrega.cidade,
-            'estado': pedido.endereco_entrega.estado,
-        }
-        
-        # Garante que o usuário existe no DB
-        user_model = User.objects.get(pk=pedido.usuario.id)
-        
-        # 2. Cria ou Atualiza o Pedido principal
+        model = None
         if pedido.id:
-            model = PedidoModel.objects.get(pk=pedido.id)
-            model.status = pedido.status
-            model.save()
-            # Se for atualização, não precisamos recriar os itens (apenas o status muda)
-        else:
-            model = PedidoModel.objects.create(
-                usuario=user_model,
-                endereco_entrega_json=endereco_json,
-                valor_total=Decimal(pedido.valor_total),
-                status=pedido.status
-            )
+            try:
+                model = PedidoModel.objects.get(pk=pedido.id)
+            except PedidoModel.DoesNotExist:
+                raise PedidoNaoEncontradoError(f"Pedido ID {pedido.id} não existe para atualização.")
+                
+        # Converte a Entidade Pedido para o Model
+        model = PedidoMapper.to_model(pedido, model)
+        
+        # Garante que o usuário existe no DB e associa
+        try:
+            user_model = User.objects.get(pk=pedido.usuario_id)
+            model.usuario = user_model
+        except User.DoesNotExist:
+            raise ValueError(f"Usuário ID {pedido.usuario_id} não encontrado.")
+            
+        model.save()
+        
+        if not pedido.id: # Se for um novo pedido
             pedido.id = model.id
             
             # 3. Cria os Itens do Pedido (apenas na criação)
             item_models = [
-                ItemPedidoModel(
-                    pedido=model,
-                    joia_id=item.joia_id,
-                    nome_joia=item.nome_joia,
-                    preco_unitario=Decimal(item.preco_unitario),
-                    quantidade=item.quantidade
-                )
+                ItemPedidoMapper.to_model(item, pedido_id=model.id)
                 for item in pedido.itens
             ]
             ItemPedidoModel.objects.bulk_create(item_models)
             
             # 4. Baixa o estoque das joias (Regra crítica de negócio na Infraestrutura)
-            # Para cada item, diminui o estoque da JoiaModel correspondente
             for item in pedido.itens:
+                # Checa o estoque antes de tentar atualizar
+                joia = JoiaModel.objects.get(pk=item.joia_id)
+                if joia.estoque < item.quantidade:
+                     raise EstoqueInsuficienteError(f"Estoque insuficiente para a Joia ID {item.joia_id}.")
+
                 JoiaModel.objects.filter(pk=item.joia_id).update(
                     estoque=F('estoque') - item.quantidade
                 )
                 
-        return pedido
+        return PedidoMapper.to_entity(model) # Retorna a entidade mapeada
 
 
 # ====================================================================
@@ -407,10 +299,10 @@ class PagamentoGatewayMock(PagamentoGatewayInterface):
         # Lógica de MOCK: 90% de chance de sucesso, 10% de falha
         if random.random() < 0.9:
             # Sucesso ou Pendente
-            if pedido.valor_total > 5000:
+            if pedido.total_pedido > Decimal(5000):
                 # Valores altos ficam Pendentes no Mock
                 status = "PENDENTE"
-                mensagem = "Pagamento sob revisão de segurança (alto valor)."
+                mensagem = "Pagamento sob revisão de segurança (alto valor - MOCK)."
             else:
                 status = "APROVADO"
                 mensagem = "Pagamento processado com sucesso pelo Mock."
@@ -418,29 +310,136 @@ class PagamentoGatewayMock(PagamentoGatewayInterface):
         else:
             # Falha
             status = "REJEITADO"
-            mensagem = "Pagamento rejeitado: Cartão inválido ou limite excedido (Mock)."
+            mensagem = "Pagamento rejeitado: Cartão inválido ou limite excedido (MOCK)."
+            # Lança a exceção de falha que a camada Core deve capturar
             raise PagamentoFalhouError(mensagem)
             
         return TransacaoPagamento(
-            transacao_id_externo=f"MOCK-{random.randint(100000, 999999)}",
-            status=status,
-            valor=pedido.valor_total,
-            mensagem=mensagem
+            id=None,
+            pedido_id=pedido.id,
+            valor=pedido.total_pedido,
+            data_transacao=datetime.now(),
+            metodo_pagamento=metodo,
+            status_pagamento=status,
+            referencia_externa=f"MOCK-{random.randint(100000, 999999)}",
         )
 
     def verificar_status(self, transacao_id: str) -> TransacaoPagamento:
         """Simula a verificação de status (ex: para boleto/pix)."""
-        # Simplificação: se a transação começa com MOCK e tem 6 dígitos, retorna PENDENTE
+        # Simplificação: se a transação começa com MOCK, retorna PENDENTE
         if transacao_id.startswith("MOCK-"):
              return TransacaoPagamento(
-                transacao_id_externo=transacao_id,
-                status="PENDENTE",
-                valor=0.0,
-                mensagem="Status Pendente (Mock: aguardando confirmação)."
+                id=None,
+                pedido_id=0, # ID Desconhecido no Mock de verificação
+                valor=Decimal(0.0),
+                data_transacao=datetime.now(),
+                metodo_pagamento="MOCK",
+                status_pagamento="PENDENTE",
+                referencia_externa=transacao_id
             )
         else:
-            return TransacaoPagamento(
-                status="REJEITADO",
-                valor=0.0,
-                mensagem="Transação Mock não encontrada."
-            )
+            raise PagamentoFalhouError("Transação Mock não encontrada.")
+        
+
+# Usuário de exemplo para fins de teste
+USUARIO_TESTE = Usuario(
+    id="user-4f8e-test", 
+    nome="Maria da Silva", 
+    email="maria@exemplo.com"
+)
+
+# Joias iniciais (estoque)
+JOIAS_DB: Dict[str, Joia] = {
+    "joia-101": Joia(id="joia-101", nome="Colar Diamante Solitário", preco=Decimal("1500.00"), estoque=5),
+    "joia-102": Joia(id="joia-102", nome="Anel Ouro Rosé Zircônia", preco=Decimal("450.50"), estoque=12),
+    "joia-103": Joia(id="joia-103", nome="Brincos de Pérola Clássicos", preco=Decimal("300.00"), estoque=20),
+}
+
+# Carrinhos ativos (vazio por padrão)
+CARINHOS_DB: Dict[str, Carrinho] = {
+    # Exemplo: "user-4f8e-test": Carrinho(usuario_id="user-4f8e-test", itens=[...])
+}
+
+# Pedidos realizados
+PEDIDOS_DB: Dict[str, Pedido] = {}
+
+
+# ====================================================================
+# REPOSITÓRIOS (Implementações Concretas)
+# ====================================================================
+
+class JoiaRepository(IRepositorioJoias):
+    """
+    Implementação do Repositório de Joias usando armazenamento in-memory (JOIAS_DB).
+    """
+    
+    def buscar_por_id(self, joia_id: str) -> Optional[Joia]:
+        """Busca uma joia pelo seu ID."""
+        return JOIAS_DB.get(joia_id)
+
+    def buscar_todos(self) -> List[Joia]:
+        """Retorna todas as joias disponíveis."""
+        return list(JOIAS_DB.values())
+
+    # Método adicional para simular a atualização do estoque após um pedido
+    def atualizar_estoque(self, joia_id: str, quantidade: int) -> None:
+        """Diminui o estoque da joia após uma compra."""
+        joia = JOIAS_DB.get(joia_id)
+        if joia and joia.estoque >= quantidade:
+            joia.estoque -= quantidade
+            # Em um DB real, isto seria um 'UPDATE'
+
+
+class CarrinhoRepository(IRepositorioCarrinhos):
+    """
+    Implementação do Repositório de Carrinho usando armazenamento in-memory (CARINHOS_DB).
+    """
+    
+    def buscar_por_usuario_id(self, usuario_id: str) -> Carrinho:
+        """
+        Busca o carrinho de um usuário. Se não existir, retorna um novo carrinho.
+        """
+        if usuario_id not in CARINHOS_DB:
+            # Cria um carrinho vazio se não for encontrado (simula 'lazy loading')
+            CARINHOS_DB[usuario_id] = Carrinho(usuario_id=usuario_id)
+            
+        return CARINHOS_DB[usuario_id]
+
+    def salvar(self, carrinho: Carrinho) -> None:
+        """Salva (ou atualiza) o estado do carrinho no 'banco de dados'."""
+        CARINHOS_DB[carrinho.usuario_id] = carrinho
+        # Em um DB real, isto seria uma operação de INSERT/UPDATE
+
+    def excluir(self, usuario_id: str) -> None:
+        """Remove o carrinho do usuário após o checkout."""
+        if usuario_id in CARINHOS_DB:
+            del CARINHOS_DB[usuario_id]
+
+
+class PedidoRepository(IRepositorioPedidos):
+    """
+    Implementação do Repositório de Pedidos usando armazenamento in-memory (PEDIDOS_DB).
+    """
+    
+    def buscar_por_id(self, pedido_id: str) -> Optional[Pedido]:
+        """Busca um pedido pelo seu ID."""
+        return PEDIDOS_DB.get(pedido_id)
+
+    def salvar(self, pedido: Pedido) -> None:
+        """
+        Salva um novo pedido. Se o ID não existir, gera um novo.
+        Em um DB real, o ID seria gerado pelo banco.
+        """
+        if not pedido.id:
+            pedido.id = str(uuid.uuid4())
+            pedido.data_pedido = datetime.now()
+            
+        PEDIDOS_DB[pedido.id] = pedido
+        # Em um DB real, isto seria uma operação de INSERT/UPDATE
+
+    def buscar_por_usuario_id(self, usuario_id: str) -> List[Pedido]:
+        """Retorna a lista de pedidos de um usuário específico."""
+        return [
+            pedido for pedido in PEDIDOS_DB.values() 
+            if pedido.usuario.id == usuario_id
+        ]
