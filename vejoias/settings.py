@@ -51,6 +51,10 @@ INSTALLED_APPS = [
     
     # Nossas Aplicações (Nessa ordem para referências de Models)
     'vejoias.core.apps.CoreConfig', # Entidades e Lógica Pura
+    'vejoias.vendas.apps.VendasConfig', # Regras de Negócio de Vendas
+    'vejoias.catalog.apps.CatalogConfig', # Regras de Negócio de Catálogo
+    'vejoias.carrinho.apps.CarrinhoConfig', # Regras de Negócio de Carrinho
+    'vejoias.pedidos.apps.PedidosConfig', # Regras de Negócio de Pedidos
     'vejoias.infrastructure.apps.InfrastructureConfig', # Models e Repositório
     'vejoias.presentation.apps.PresentationConfig', # Views, Forms, Templates
 ]

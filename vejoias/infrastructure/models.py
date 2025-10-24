@@ -1,4 +1,3 @@
-# vejoias/infrastructure/models.py
 # Define os modelos do banco de dados para a camada de infraestrutura.
 
 from django.db import models
@@ -57,6 +56,7 @@ class Usuario(AbstractUser):
     # Campos adicionais do perfil
     telefone = models.CharField(max_length=15, blank=True, null=True)
     cpf = models.CharField('CPF', max_length=14, unique=True, blank=True, null=True)
+    is_admin = models.BooleanField(default=False) # Adicionado para uso em admin
 
     # Campos necessários para login/autenticação
     USERNAME_FIELD = 'email'
@@ -171,6 +171,61 @@ class Joia(models.Model):
         return f"R$ {self.preco:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+# --- NOVOS MODELOS PARA CARRINHO DE COMPRAS ---
+
+class Carrinho(models.Model):
+    """
+    Representa o carrinho de compras de um usuário.
+    """
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='carrinho', null=True, blank=True)
+    # Token para carrinhos de usuários não logados (anônimos)
+    sessao_key = models.CharField(max_length=40, null=True, blank=True, unique=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Carrinho'
+        verbose_name_plural = 'Carrinhos'
+        db_table = 'carrinho'
+
+    def __str__(self):
+        return f"Carrinho de {self.usuario.email if self.usuario else self.sessao_key}"
+
+    @property
+    def total_carrinho(self):
+        """Calcula o valor total de todos os itens no carrinho."""
+        return sum(item.subtotal for item in self.itens.all())
+
+class ItemCarrinho(models.Model):
+    """
+    Um item específico dentro de um Carrinho, com quantidade e preço no momento.
+    """
+    carrinho = models.ForeignKey(Carrinho, on_delete=models.CASCADE, related_name='itens')
+    joia = models.ForeignKey(Joia, on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name = 'Item do Carrinho'
+        verbose_name_plural = 'Itens do Carrinho'
+        # Garante que uma Joia só possa aparecer uma vez em um Carrinho específico
+        unique_together = ('carrinho', 'joia') 
+        db_table = 'item_carrinho'
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.joia.nome}"
+    
+    @property
+    def preco_unitario(self):
+        """Preço atual da joia."""
+        return self.joia.preco
+    
+    @property
+    def subtotal(self):
+        """Calcula o subtotal do item (preço * quantidade)."""
+        return self.joia.preco * self.quantidade
+
+# --- MODELOS PARA PEDIDOS (Mantidos) ---
+
 class Pedido(models.Model):
     """
     Modelo para pedidos de compra.
@@ -244,5 +299,3 @@ class ItemPedido(models.Model):
     @property
     def subtotal_formatado(self):
         return f"R$ {self.subtotal:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-# O modelo ProfileUsuario foi integrado ao modelo Usuario usando o AbstractUser.

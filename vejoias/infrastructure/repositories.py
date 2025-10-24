@@ -1,4 +1,3 @@
-# vejoias/infrastructure/repositories.py
 """
 Camada de Infraestrutura: Implementação de Repositórios e Gateways.
 
@@ -32,13 +31,16 @@ from vejoias.core.exceptions import (
 
 # Importações dos Modelos Django
 from vejoias.catalog.models import Joia as JoiaModel, Categoria as CategoriaModel
-from vejoias.vendas.models import (
-    Carrinho as CarrinhoModel, 
-    ItemCarrinho as ItemCarrinhoModel, 
+
+# Modelos do app Vendas - Removido ItemCarrinhoModel daqui
+from vejoias.vendas.models import ( 
     Pedido as PedidoModel, 
     ItemPedido as ItemPedidoModel, 
     Endereco as EnderecoModel
 )
+
+# Modelos do app Carrinho - Adicionado ItemCarrinhoModel aqui
+from vejoias.carrinho.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
 
 from django.contrib.auth import get_user_model
 

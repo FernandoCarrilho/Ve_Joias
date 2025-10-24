@@ -1,76 +1,54 @@
+# vejoias/core/exceptions.py
+# Define exceções personalizadas para o domínio da aplicação.
+
 class ApplicationError(Exception):
-    """
-    Exceção base para todos os erros de domínio (negócio) da aplicação Vê Joias.
-    Permite que as Views capturem qualquer erro de negócio
-    com um único 'except ApplicationError'.
-    """
+    """Exceção base para todos os erros da Aplicação (incluindo Core e Infra)."""
     pass
 
-
-
-class EstoqueInsuficienteError(ApplicationError):
-    """
-    Exceção levantada quando um item não pode ser adicionado ao carrinho
-    devido à falta de estoque.
-    """
-    def __init__(self, joia_id: str, estoque_atual: int, quantidade_solicitada: int, message="Estoque insuficiente."):
-        self.joia_id = joia_id
-        self.estoque_atual = estoque_atual
-        self.quantidade_solicitada = quantidade_solicitada
-        super().__init__(
-            f"{message} Jóia ID: {joia_id}. Solicitado: {quantidade_solicitada}, Disponível: {estoque_atual}."
-        )
-
-
-
-class ItemNaoEncontradoError(ApplicationError):
-    """
-    Exceção levantada quando um item específico não é encontrado (catálogo, carrinho, etc.).
-    """
-    def __init__(self, item_id: str, tipo="Item", message="Não encontrado."):
-        self.item_id = item_id
-        self.tipo = tipo
-        super().__init__(
-            f"{tipo} com ID: {item_id} não foi encontrado."
-        )
-
-
-
-class CarrinhoVazioError(ApplicationError):
-    """
-    Exceção levantada quando uma operação de checkout é tentada com um carrinho vazio.
-    """
-    pass # A mensagem padrão é suficiente aqui.
-
-
-
-class PagamentoFalhouError(ApplicationError):
-    """
-    Exceção levantada quando o processamento de pagamento via API externa
-    não foi bem-sucedido.
-    """
-    def __init__(self, detalhes: str = "Motivo desconhecido", message="Falha ao processar o pagamento."):
-        self.detalhes = detalhes
-        super().__init__(
-            f"{message} Detalhes da falha: {detalhes}"
-        )
-
-
-class DadosInvalidosError(ApplicationError):
-    """
-    Exceção para erros de validação que não são tratados pelo Serializer.
-    """
-    def __init__(self, campos_errados: list = [], message="Dados de entrada inválidos."):
-        self.campos_errados = campos_errados
-        super().__init__(
-            f"{message} Campos afetados: {', '.join(campos_errados)}"
-        )
-
-
-class StatusInvalidoError(ApplicationError):
-    """Exceção levantada quando o status fornecido é inválido."""
+class CoreException(ApplicationError):
+    """Exceção base para todos os erros de domínio (Core)."""
     pass
 
-class PedidoNaoEncontradoError(ApplicationError):
-    """Exceção levantada quando um pedido não é encontrado pelo ID ou transação."""
+# --- Exceções de Entidades Não Encontradas ---
+
+class UsuarioNaoEncontradoError(CoreException):
+    """Levantada quando um Usuário específico não é encontrado."""
+    pass
+
+class JoiaNaoEncontradaError(CoreException):
+    """Levantada quando uma Joia (Produto) específica não é encontrada."""
+    pass
+
+class CategoriaNaoEncontradaError(CoreException):
+    """Levantada quando uma Categoria específica não é encontrada."""
+    pass
+
+class PedidoNaoEncontradoError(CoreException):
+    """Levantada quando um Pedido específico não é encontrado."""
+    pass
+
+class ItemNaoEncontradoError(CoreException):
+    """Levantada quando um Item de Carrinho ou Item de Pedido não é encontrado."""
+    pass
+
+# --- Exceções de Regras de Negócio ---
+
+class EstoqueInsuficienteError(CoreException):
+    """Levantada quando a quantidade solicitada de um item excede o estoque disponível."""
+    pass
+
+class CarrinhoVazioError(CoreException):
+    """Levantada ao tentar finalizar um carrinho que está vazio."""
+    pass
+
+class DadosInvalidosError(CoreException):
+    """Levantada quando dados de entrada não são válidos para uma operação de domínio."""
+    pass
+
+class StatusInvalidoError(CoreException):
+    """Levantada quando é fornecido um status inválido para uma transição ou atualização."""
+    pass
+
+class PagamentoFalhouError(CoreException):
+    """Levantada quando o processamento de pagamento falha."""
     pass

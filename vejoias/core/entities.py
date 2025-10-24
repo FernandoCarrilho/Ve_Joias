@@ -1,96 +1,131 @@
 # vejoias/core/entities.py
-# Define as entidades de domínio (Core Entities) que representam os conceitos de negócio
-# e são independentes da infraestrutura (Django Models).
+# Define as Entidades de Domínio puras, que encapsulam as regras de negócio
+# e são independentes de qualquer framework (como o Django ORM).
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Optional, List
+from datetime import datetime
 from decimal import Decimal
-from typing import List
 
-# --- EXCEÇÕES DE DOMÍNIO ---
+# O uso de 'Decimal' é crucial para manter a precisão monetária.
 
-class EstoqueInsuficienteError(Exception):
-    """Exceção levantada quando a quantidade de um item excede o estoque disponível."""
-    def __init__(self, joia_id: int, solicitada: int, disponivel: int):
-        self.joia_id = joia_id
-        self.solicitada = solicitada
-        self.disponivel = disponivel
-        super().__init__(f"Estoque insuficiente para a jóia {joia_id}. Solicitado: {solicitada}, Disponível: {disponivel}.")
-
-# --- ENTIDADES DE DOMÍNIO ---
-
-@dataclass
+@dataclass(frozen=True)
 class Endereco:
-    """
-    Representa o endereço de entrega ou faturamento do cliente.
-    Usado para desacoplar a lógica de negócio do modelo de banco de dados.
-    """
+    """Entidade que representa um endereço físico."""
+    cep: str
     rua: str
     numero: str
     bairro: str
     cidade: str
     estado: str
-    cep: str
-    referencia: str = field(default="")
-    telefone: str = field(default="") # Telefone WhatsApp usado no CheckoutForm
+    referencia: Optional[str] = None
+    principal: bool = False
+    id: Optional[int] = None
 
-    def formatar(self) -> str:
-        """Retorna o endereço formatado para exibição."""
-        return f"{self.rua}, {self.numero}, {self.bairro} - {self.cidade}/{self.estado} (CEP: {self.cep})"
+@dataclass(frozen=True)
+class Usuario:
+    """Entidade que representa um Usuário do sistema."""
+    email: str
+    first_name: str
+    last_name: str
+    id: Optional[int] = None
+    telefone: Optional[str] = None
+    cpf: Optional[str] = None
+    is_active: bool = True
+    is_staff: bool = False
+    is_superuser: bool = False
 
-
-@dataclass
-class ItemCarrinho:
-    """Representa um único item dentro do carrinho de compras."""
-    joia_id: int
+@dataclass(frozen=True)
+class Categoria:
+    """Entidade que representa uma Categoria de produto."""
     nome: str
-    preco_unitario: Decimal
+    slug: str
+    id: Optional[int] = None
+
+@dataclass(frozen=True)
+class Subcategoria:
+    """Entidade que representa uma Subcategoria de produto."""
+    nome: str
+    slug: str
+    categoria_id: int
+    id: Optional[int] = None
+
+@dataclass(frozen=True)
+class Joia:
+    """Entidade que representa um produto (Joia) na loja."""
+    nome: str
+    preco: Decimal
+    estoque: int
+    id: Optional[int] = None
+    descricao: Optional[str] = None
+    disponivel: bool = True
+    imagem: Optional[str] = None
+    categoria_id: Optional[int] = None
+    subcategoria_id: Optional[int] = None
+    criado_em: Optional[datetime] = None
+    atualizado_em: Optional[datetime] = None
+
+@dataclass(frozen=True)
+class ItemCarrinho:
+    """Entidade que representa um item dentro do Carrinho."""
+    joia_id: int
     quantidade: int
+    id: Optional[int] = None
+    preco_unitario: Optional[Decimal] = None
+    subtotal: Optional[Decimal] = None
 
-    @property
-    def subtotal(self) -> Decimal:
-        """Calcula o subtotal deste item."""
-        return self.preco_unitario * self.quantidade
-
-
-@dataclass
+@dataclass(frozen=True)
 class Carrinho:
-    """
-    Representa o carrinho de compras de um usuário.
-    Contém a lógica de cálculo e manipulação de itens.
-    """
-    usuario_id: int
-    itens: List[ItemCarrinho] = field(default_factory=list)
-
-    def adicionar_item(self, item: ItemCarrinho):
-        """Adiciona ou atualiza um item no carrinho."""
-        # Lógica de agrupamento/atualização (simplificada)
-        for i in self.itens:
-            if i.joia_id == item.joia_id:
-                i.quantidade += item.quantidade
-                return
-
-        self.itens.append(item)
-
-    def remover_item(self, joia_id: int):
-        """Remove um item do carrinho."""
-        self.itens = [item for item in self.itens if item.joia_id != joia_id]
+    """Entidade que representa o Carrinho de Compras, contendo itens."""
+    itens: List[ItemCarrinho]
+    id: Optional[int] = None
+    usuario_id: Optional[int] = None
+    sessao_key: Optional[str] = None
+    data_criacao: Optional[datetime] = None
+    data_atualizacao: Optional[datetime] = None
 
     @property
-    def subtotal(self) -> Decimal:
-        """Calcula o subtotal de todos os itens no carrinho."""
-        return sum(item.subtotal for item in self.itens)
+    def total_carrinho(self) -> Decimal:
+        """Calcula o total baseado nos subtotais dos itens."""
+        return sum(item.subtotal for item in self.itens if item.subtotal is not None)
 
-    @property
-    def total_itens(self) -> int:
-        """Retorna o número total de itens (unidades) no carrinho."""
-        return sum(item.quantidade for item in self.itens)
+@dataclass(frozen=True)
+class ItemPedido:
+    """Entidade que representa um item dentro de um Pedido (snapshot de dados)."""
+    joia_nome: str
+    joia_preco: Decimal
+    quantidade: int
+    subtotal: Decimal
+    id: Optional[int] = None
+    pedido_id: Optional[int] = None
 
-    def calcular_frete(self) -> Decimal:
-        """Lógica placeholder para cálculo de frete."""
-        # Pode ser substituído por uma chamada a um serviço externo
-        return Decimal('30.00')
+@dataclass(frozen=True)
+class TransacaoPagamento:
+    """Entidade que representa uma transação de pagamento."""
+    pedido_id: int
+    valor: Decimal
+    data_transacao: datetime
+    metodo_pagamento: str # Ex: 'PIX', 'Cartao', 'Boleto'
+    status_pagamento: str # Ex: 'Pendente', 'Aprovado', 'Falhou'
+    id: Optional[int] = None
+    referencia_externa: Optional[str] = None # ID da transação no gateway
 
-    @property
-    def total_geral(self) -> Decimal:
-        """Calcula o valor total do pedido (subtotal + frete)."""
-        return self.subtotal + self.calcular_frete()
+@dataclass(frozen=True)
+class Pedido:
+    """Entidade que representa um Pedido concluído."""
+    data_pedido: datetime
+    status: str
+    total_pedido: Decimal
+    tipo_pagamento: str
+    cep_entrega: str
+    rua_entrega: str
+    numero_entrega: str
+    bairro_entrega: str
+    cidade_entrega: str
+    estado_entrega: str
+    telefone_whatsapp: str
+    id: Optional[int] = None
+    usuario_id: Optional[int] = None
+    referencia_entrega: Optional[str] = None
+    itens: Optional[List[ItemPedido]] = None
+    transacao: Optional[TransacaoPagamento] = None
