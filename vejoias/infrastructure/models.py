@@ -115,6 +115,9 @@ class Categoria(models.Model):
     """
     nome = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=100, unique=True)
+    imagem = models.ImageField(upload_to='categorias/', blank=True, null=True)
+    descricao = models.TextField(blank=True)
+    em_destaque = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Categoria'
@@ -147,12 +150,15 @@ class Joia(models.Model):
     Modelo principal para os produtos da loja.
     """
     nome = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
     descricao = models.TextField()
     preco = models.DecimalField(max_digits=10, decimal_places=2)
+    desconto = models.PositiveIntegerField(default=0, help_text='Desconto em porcentagem')
     estoque = models.IntegerField(default=0)
     disponivel = models.BooleanField(default=True)
+    em_destaque = models.BooleanField(default=False)
     # ALTERADO: De models.URLField para models.ImageField para suportar upload local/S3
-    imagem = models.ImageField(upload_to='joias/', blank=True, null=True) 
+    imagem_principal = models.ImageField(upload_to='joias/', blank=True, null=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='joias')
     subcategoria = models.ForeignKey(Subcategoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='joias')
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -284,10 +290,10 @@ class ItemPedido(models.Model):
     Modelo para os itens contidos em um pedido.
     """
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens')
-    joia_nome = models.CharField(max_length=255) # Snapshot do nome
-    joia_preco = models.DecimalField(max_digits=10, decimal_places=2) # Snapshot do preço
-    quantidade = models.IntegerField()
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    joia_nome = models.CharField(max_length=255, default='Item não identificado') # Snapshot do nome
+    joia_preco = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # Snapshot do preço
+    quantidade = models.IntegerField(default=1)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
         verbose_name = 'Item do Pedido'
@@ -300,3 +306,8 @@ class ItemPedido(models.Model):
     @property
     def subtotal_formatado(self):
         return f"R$ {self.subtotal:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    
+    def save(self, *args, **kwargs):
+        # Atualiza o subtotal antes de salvar
+        self.subtotal = self.quantidade * self.joia_preco
+        super().save(*args, **kwargs)

@@ -1,9 +1,11 @@
 # vejoias/presentation/forms.py
 
+from datetime import datetime
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
 from .models import PerfilUsuario, Joia, Pedido, Categoria
+from decimal import Decimal
 
 # --- 1. FORMULÁRIOS DE AUTENTICAÇÃO ---
 
@@ -112,6 +114,28 @@ class SenhaForm(PasswordChangeForm):
     pass
 
 # --- 3. FORMULÁRIOS ADMINISTRATIVOS ---
+
+class AdicionarItemCarrinhoForm(forms.Form):
+    """
+    Formulário para adicionar item ao carrinho.
+    """
+    joia_id = forms.IntegerField(widget=forms.HiddenInput())
+    quantidade = forms.IntegerField(
+        min_value=1,
+        initial=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '1',
+            'step': '1'
+        })
+    )
+
+    def clean_quantidade(self):
+        quantidade = self.cleaned_data['quantidade']
+        if quantidade < 1:
+            raise forms.ValidationError("A quantidade deve ser pelo menos 1.")
+        return quantidade
+
 
 class JoiaForm(forms.ModelForm):
     """

@@ -2,13 +2,25 @@ class BaseErroCore(Exception):
     """Classe base para todas as exceções da Camada Core."""
     pass
 
+class DadosInvalidosError(BaseErroCore):
+    """Erro levantado quando dados inválidos são fornecidos."""
+    def __init__(self, message="Os dados fornecidos são inválidos."):
+        self.message = message
+        super().__init__(self.message)
+
 # ===============================================
 # ERROS DE PERSISTÊNCIA E ENTIDADE
 # ===============================================
 
 class ItemNaoEncontradoError(BaseErroCore):
-    """Erro levantado quando uma Joia, Usuário ou Endereço não é encontrado."""
+    """Erro levantado quando um item (genérico) não é encontrado."""
     def __init__(self, message="O item solicitado não foi encontrado."):
+        self.message = message
+        super().__init__(self.message)
+
+class JoiaNaoEncontradaError(ItemNaoEncontradoError):
+    """Erro levantado quando uma joia específica não é encontrada."""
+    def __init__(self, message="A joia solicitada não foi encontrada."):
         self.message = message
         super().__init__(self.message)
         

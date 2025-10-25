@@ -50,15 +50,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt', 
     
     # Nossas Aplicações (Nessa ordem para referências de Models)
-    # Recomendado: Infrastructure (Models/User) deve vir antes de apps que dependem de Models.
-    'vejoias.infrastructure.apps.InfrastructureConfig', # Models e Repositório (PRIMEIRO)
-    
     'vejoias.core.apps.CoreConfig', # Entidades e Lógica Pura
-    'vejoias.vendas.apps.VendasConfig', # Regras de Negócio de Vendas
-    'vejoias.catalog.apps.CatalogConfig', # Regras de Negócio de Catálogo
-    'vejoias.carrinho.apps.CarrinhoConfig', # Regras de Negócio de Carrinho
-    'vejoias.pedidos.apps.PedidosConfig', # Regras de Negócio de Pedidos
+    'vejoias.infrastructure.apps.InfrastructureConfig', # Models e Repositório
     'vejoias.presentation.apps.PresentationConfig', # Views, Forms, Templates
+    'vejoias.catalog.apps.CatalogConfig', # Catálogo de Produtos
+    'vejoias.carrinho.apps.CarrinhoConfig', # Carrinho de Compras
+    'vejoias.pedidos.apps.PedidosConfig', # Pedidos
+    'vejoias.vendas.apps.VendasConfig', # Vendas
 ]
 
 
@@ -107,12 +105,8 @@ WSGI_APPLICATION = 'vejoias.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('POSTGRES_DB'),
-        'USER': config('POSTGRES_USER'),
-        'PASSWORD': config('POSTGRES_PASSWORD'),
-        'HOST': config('POSTGRES_HOST', default='db'),
-        'PORT': config('POSTGRES_PORT', default=5432, cast=int),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -156,16 +150,16 @@ USE_TZ = True
 
 
 # ====================================================================
-# ARQUIVOS ESTÁTICOS E DE MÍDIA (CSS, JS, Imagens de Usuário)
+# ARQUIVOS ESTÁTICOS (CSS, JavaScript, Imagens)
 # ====================================================================
 
-# Estáticos: Arquivos do projeto (CSS, JS, imagens estáticas)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Mídia: Arquivos enviados pelo usuário (fotos de perfil, produtos, etc)
+# Arquivos de mídia (uploads de usuário)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -200,7 +194,7 @@ REST_FRAMEWORK = {
 EVOLUTION_API_URL = config('EVOLUTION_API_URL', default='http://evolution_api:8080/v1')
 EVOLUTION_API_KEY = config('EVOLUTION_API_KEY')
 EVOLUTION_API_INSTANCE = config('EVOLUTION_API_INSTANCE', default='default')
-EVOLUTION_INSTANCE_NAME = config('EVOLUTION_API_INSTANCE_NAME', default='TEMP_INSTANCE_NAME') # Corrigido typo: EVOLUTION_API_INSTANCE para EVOLUTION_INSTANCE_NAME
+EVOLUTION_INSTANCE_NAME = config('EVOLUTION_INSTANCE_NAME', default='TEMP_INSTANCE_NAME')
 
 
 # Configurações de E-mail

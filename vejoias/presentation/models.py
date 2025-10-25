@@ -1,6 +1,6 @@
 # vejoias/presentation/models.py
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.utils import timezone
 
 # Modelo de Extensão do Usuário (Perfil)
@@ -8,7 +8,7 @@ class PerfilUsuario(models.Model):
     """
     Extensão do modelo User padrão do Django para adicionar campos específicos da loja.
     """
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfilusuario')
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='perfilusuario')
     telefone = models.CharField(max_length=15, blank=True, null=True)
     endereco = models.TextField(blank=True, null=True, verbose_name="Endereço Completo")
     is_admin = models.BooleanField(default=False, verbose_name="É Administrador")
@@ -87,7 +87,7 @@ class Pedido(models.Model):
         (STATUS_CANCELADO, 'Cancelado'),
     ]
 
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='pedidos', verbose_name="Cliente")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='pedidos_usuario', verbose_name="Cliente")
     data_criacao = models.DateTimeField(default=timezone.now, verbose_name="Data do Pedido")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PROCESSANDO, verbose_name="Status do Pedido")
     

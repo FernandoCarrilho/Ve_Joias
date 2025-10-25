@@ -68,7 +68,10 @@ class CategoriaMapper(BaseMapper):
         return CategoriaEntity(
             id=model.id,
             nome=model.nome,
-            slug=model.slug
+            slug=model.slug,
+            imagem=model.imagem.url if model.imagem else None,
+            descricao=model.descricao,
+            em_destaque=model.em_destaque
         )
 
 class SubcategoriaMapper(BaseMapper):
@@ -94,15 +97,14 @@ class JoiaMapper(BaseMapper):
         return JoiaEntity(
             id=model.id,
             nome=model.nome,
+            slug=model.slug,
             descricao=model.descricao,
             preco=model.preco,
             estoque=model.estoque,
-            disponivel=model.disponivel,
-            imagem=model.imagem,
-            categoria_id=model.categoria_id,
-            subcategoria_id=model.subcategoria_id,
-            criado_em=model.criado_em,
-            atualizado_em=model.atualizado_em
+            desconto=model.desconto,
+            em_destaque=model.em_destaque,
+            imagem_principal=model.imagem_principal.url if model.imagem_principal else None,
+            categoria=CategoriaMapper.to_entity(model.categoria) if model.categoria else None
         )
 
     @staticmethod
@@ -113,13 +115,13 @@ class JoiaMapper(BaseMapper):
             model = Joia()
             
         model.nome = entity.nome
+        model.slug = entity.slug
         model.descricao = entity.descricao
         model.preco = entity.preco
         model.estoque = entity.estoque
-        model.disponivel = entity.disponivel
-        model.imagem = entity.imagem
-        model.categoria_id = entity.categoria_id
-        model.subcategoria_id = entity.subcategoria_id
+        model.desconto = entity.desconto
+        model.em_destaque = entity.em_destaque
+        model.categoria = entity.categoria.id if entity.categoria else None
         
         return model
 

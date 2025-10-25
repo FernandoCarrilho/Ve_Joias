@@ -1,106 +1,109 @@
 {% extends "base.html" %}
 
-{% block title %}{{ joia.nome }} - Detalhes{% endblock %}
+{% block title %}{{ joia.nome }} | Detalhes da Joia{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-10 max-w-5xl">
+<div class="container mx-auto px-4 py-12 max-w-6xl">
     
-    <div class="bg-white p-8 rounded-xl shadow-2xl">
-        <div class="md:flex md:space-x-8">
+    <!-- Breadcrumbs (Navegação) -->
+    <nav class="mb-6 text-sm text-gray-500">
+        <a href="{% url 'lista_joias' %}" class="hover:text-pink-600">Catálogo</a>
+        <span class="mx-2">/</span>
+        <span class="font-semibold text-gray-700">{{ joia.nome }}</span>
+    </nav>
+
+    <!-- Layout Principal: Imagem e Detalhes -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white p-8 rounded-xl shadow-2xl">
+        
+        <!-- Coluna 1: Imagem Principal e Galeria -->
+        <div class="space-y-4">
+            <div class="relative overflow-hidden rounded-xl shadow-lg border border-gray-100">
+                <img src="{{ joia.imagem_url|default:'https://placehold.co/600x600/f7e0e7/581c87?text=Imagem+da+Joia' }}" 
+                     alt="{{ joia.nome }}" 
+                     class="w-full h-auto object-cover transition-transform duration-500 hover:scale-105">
+            </div>
             
-            <!-- Coluna da Imagem -->
-            <div class="md:w-1/2 mb-6 md:mb-0">
-                <div class="aspect-w-1 aspect-h-1 overflow-hidden rounded-xl shadow-xl border border-gray-100">
-                    <img src="{{ joia.imagem_url|default:'https://placehold.co/800x800/f0d8e4/880e4f?text=Joia' }}" 
-                         alt="{{ joia.nome }}" 
-                         class="w-full h-full object-cover"
-                         onerror="this.onerror=null;this.src='https://placehold.co/800x800/f0d8e4/880e4f?text=Joia';" />
+            <!-- Miniaturas (se houver mais imagens) -->
+            <div class="flex space-x-3 overflow-x-auto p-1">
+                <!-- Supondo que você tenha uma lista 'joia.imagens_secundarias' -->
+                {% for img in joia.imagens_secundarias %}
+                <img src="{{ img.url }}" 
+                     alt="Detalhe {{ forloop.counter }}" 
+                     class="w-20 h-20 object-cover rounded-md border-2 border-transparent hover:border-pink-500 cursor-pointer transition">
+                {% empty %}
+                <!-- Placeholder para miniaturas -->
+                <div class="w-20 h-20 bg-gray-100 rounded-md flex items-center justify-center text-xs text-gray-500">
+                    Sem mais fotos
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Coluna 2: Informações e Compra -->
+        <div class="flex flex-col justify-between">
+            <div>
+                <!-- Nome e Preço -->
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-2">{{ joia.nome }}</h1>
+                <p class="text-xl font-medium text-gray-500 mb-6">{{ joia.categoria.nome }}</p>
+                
+                <p class="text-5xl font-bold text-pink-600 mb-8">R$ {{ joia.preco|floatformat:2 }}</p>
+                
+                <!-- Descrição -->
+                <h2 class="text-2xl font-semibold text-gray-800 mb-3 border-b pb-2">Descrição Detalhada</h2>
+                <div class="text-gray-700 leading-relaxed mb-6">
+                    <p>{{ joia.descricao|linebreaks }}</p>
+                    <!-- Adicionar características específicas (Ex: Material, Peso, Tamanho) -->
+                    <ul class="list-disc list-inside mt-4 text-sm text-gray-600">
+                        <li>**Material:** {{ joia.material|default:"Ouro 18k" }}</li>
+                        <li>**Peso (aprox.):** {{ joia.peso_gramas|default:"2.5" }}g</li>
+                        <li>**Acabamento:** {{ joia.acabamento|default:"Polido" }}</li>
+                    </ul>
                 </div>
             </div>
 
-            <!-- Coluna dos Detalhes e Compra -->
-            <div class="md:w-1/2">
-                <span class="inline-block px-3 py-1 text-sm font-semibold rounded-full mb-2 
-                             {% if joia.estoque > 10 %}bg-green-100 text-green-700{% elif joia.estoque > 0 %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}">
-                    {% if joia.estoque > 0 %}{{ joia.estoque }} disponíveis{% else %}Esgotado{% endif %}
-                </span>
+            <!-- Ações de Compra -->
+            <div class="mt-8 pt-6 border-t border-gray-100">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Adicionar ao Carrinho</h2>
                 
-                <h1 class="text-4xl font-extrabold text-gray-900 mb-2">{{ joia.nome }}</h1>
-                <p class="text-xl text-pink-600 font-semibold mb-4">{{ joia.categoria_nome }}</p>
-                
-                <!-- Preço -->
-                <p class="text-4xl font-bold text-gray-900 mb-6 border-t pt-4">
-                    R$ {{ joia.preco|floatformat:2 }}
-                </p>
-
-                <!-- Descrição -->
-                <h2 class="text-xl font-semibold text-gray-800 mb-2">Detalhes</h2>
-                <p class="text-gray-600 mb-6 leading-relaxed">{{ joia.descricao|linebreaksbr }}</p>
-                
-                <!-- Formulário de Compra (Quantidade) -->
-                {% if joia.estoque > 0 %}
-                    <form id="form-adicionar-carrinho" method="post" action="{% url 'api_carrinho' %}" class="space-y-4">
-                        {% csrf_token %}
-                        <input type="hidden" name="joia_id" value="{{ joia.id }}">
-                        
-                        <div class="flex items-center space-x-4">
-                            <label for="quantidade" class="text-lg font-medium text-gray-700">Quantidade:</label>
-                            <input type="number" id="quantidade" name="quantidade" value="1" min="1" max="{{ joia.estoque }}" required
-                                   class="w-20 p-2 border border-gray-300 rounded-lg text-center focus:ring-pink-500 focus:border-pink-500">
-                            
-                            <button type="submit" 
-                                    class="flex-grow bg-pink-600 text-white text-lg font-bold py-3 px-6 rounded-xl shadow-md hover:bg-pink-700 transition duration-300 transform hover:scale-[1.005]">
-                                <i class="fas fa-cart-plus mr-2"></i> Adicionar ao Carrinho
-                            </button>
-                        </div>
-                    </form>
-                {% else %}
-                    <div class="p-4 bg-red-50 text-red-700 rounded-lg text-center font-bold shadow-inner">
-                        <i class="fas fa-exclamation-triangle mr-2"></i> Produto Esgotado!
+                <!-- Formulário de Adição ao Carrinho -->
+                <form method="post" action="{% url 'adicionar_ao_carrinho' joia.id %}" class="space-y-4">
+                    {% csrf_token %}
+                    
+                    <!-- Seleção de Quantidade -->
+                    <div class="flex items-center space-x-4">
+                        <label for="quantidade" class="text-lg font-medium text-gray-700">Quantidade:</label>
+                        <input type="number" name="quantidade" id="quantidade" value="1" min="1" max="{{ joia.estoque }}" required
+                               class="w-20 p-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-pink-500 focus:border-pink-500">
                     </div>
-                {% endif %}
-
-                <a href="{% url 'catalogo' %}" class="mt-6 block text-center text-sm text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-arrow-left mr-1"></i> Continuar comprando
-                </a>
+                    
+                    <!-- Estoque / Status -->
+                    <div class="text-sm font-semibold">
+                        {% if joia.estoque > 0 %}
+                            <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i> Em Estoque ({{ joia.estoque }} unidades)</span>
+                        {% else %}
+                            <span class="text-red-600"><i class="fas fa-times-circle mr-1"></i> Esgotado</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Botão de Compra -->
+                    <button type="submit" 
+                            {% if joia.estoque <= 0 %}disabled{% endif %}
+                            class="w-full bg-pink-600 text-white text-xl font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-pink-700 transition duration-300 transform hover:scale-[1.01] disabled:bg-gray-400 disabled:shadow-none disabled:cursor-not-allowed">
+                        <i class="fas fa-shopping-cart mr-2"></i> 
+                        Adicionar ao Carrinho
+                    </button>
+                    
+                </form>
             </div>
         </div>
     </div>
-</div>
+    
+    <!-- Link de retorno -->
+    <div class="mt-12 text-center">
+        <a href="{% url 'lista_joias' %}" class="text-lg text-gray-500 hover:text-pink-600 transition duration-150 flex items-center justify-center">
+            <i class="fas fa-chevron-left mr-2"></i> Continuar Comprando
+        </a>
+    </div>
 
-<script>
-    // Manipulação do formulário de adição ao carrinho via AJAX para evitar recarregar a página
-    document.getElementById('form-adicionar-carrinho').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = {
-            joia_id: formData.get('joia_id'),
-            quantidade: parseInt(formData.get('quantidade'))
-        };
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch(this.action, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken 
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json().then(json => ({ status: response.status, body: json })))
-        .then(({ status, body }) => {
-            if (status >= 200 && status < 300) {
-                // Atualização de feedback visual (ex: ícone de carrinho no header)
-                alert(`${body.joia_nome} adicionada(o) ao carrinho com sucesso!`);
-            } else {
-                alert('Erro ao adicionar item: ' + (body.message || 'Erro desconhecido.'));
-            }
-        })
-        .catch(error => {
-            console.error('Erro na comunicação:', error);
-            alert('Falha na comunicação com o servidor. Tente novamente.');
-        });
-    });
-</script>
+</div>
 {% endblock %}

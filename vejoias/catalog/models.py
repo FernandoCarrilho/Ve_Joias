@@ -27,10 +27,39 @@ class Categoria(models.Model):
 # 2. Joia (Produto)
 # ====================================================================
 
+# ====================================================================
+# 2. Subcategoria
+# ====================================================================
+
+class Subcategoria(models.Model):
+    """Modelo para subcategorias de joias (Ex: Anéis de Noivado, Correntes de Ouro)."""
+    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='subcategorias')
+    nome = models.CharField(max_length=100, verbose_name="Nome da Subcategoria")
+    slug = models.SlugField(max_length=100, unique=True, editable=False)
+    descricao = models.TextField(blank=True, verbose_name="Descrição")
+
+    class Meta:
+        verbose_name = "Subcategoria"
+        verbose_name_plural = "Subcategorias"
+        unique_together = ('categoria', 'nome')
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.nome}"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(f"{self.categoria.nome}-{self.nome}")
+        super().save(*args, **kwargs)
+
+# ====================================================================
+# 3. Joia (Produto)
+# ====================================================================
+
 class Joia(models.Model):
     """Modelo para representar um produto (Joia) no catálogo."""
     
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, related_name='joias')
+    subcategoria = models.ForeignKey(Subcategoria, on_delete=models.SET_NULL, null=True, related_name='joias')
     
     nome = models.CharField(max_length=255, verbose_name="Nome da Joia")
     slug = models.SlugField(max_length=255, unique=True, editable=False)
@@ -46,7 +75,7 @@ class Joia(models.Model):
     
     # Datas
     data_criacao = models.DateTimeField(auto_now_add=True)
-    data_atualizacao = models.DateTimeField(auto_now=True)
+    data_atualizacao = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         verbose_name = "Joia"

@@ -362,6 +362,55 @@ class EvolutionAPIGateway(IWhatsappGateway):
         )
         return self._enviar_mensagem(numero_telefone, mensagem)
 
+    def enviar_status_mudanca(self, pedido: Pedido, numero_telefone: str) -> bool:
+        """Implementa IWhatsappGateway - Mudança de status do pedido."""
+        mensagem = (
+            f"🔄 O status do seu Pedido {pedido.id} foi atualizado para: {pedido.status}\n\n"
+            f"Para mais informações, acesse nossa plataforma.\n"
+            f"Equipe Vê Jóias."
+        )
+        return self._enviar_mensagem(numero_telefone, mensagem)
+
+
+class WhatsAppGatewayMock(IWhatsappGateway):
+    """
+    Gateway Mock para simulação de mensagens WhatsApp.
+    Implementa o Protocolo IWhatsappGateway.
+    """
+    
+    def _enviar_mensagem(self, numero_telefone: str, mensagem: str) -> bool:
+        """Método auxiliar que simula envio de mensagem."""
+        print(f"[MOCK WhatsApp] Para: {numero_telefone}\nMensagem: {mensagem}")
+        return True
+
+    def enviar_confirmacao_pedido(self, pedido: Pedido, numero_telefone: str) -> bool:
+        """Implementa IWhatsappGateway - Confirmação do pedido."""
+        mensagem = (
+            f"🎉 Pedido {pedido.id} confirmado na Vê Jóias! 🎉\n\n"
+            f"Status: {pedido.status}\n"
+            f"Total: R$ {pedido.total_pedido:.2f}\n"
+            f"Obrigado por comprar conosco!"
+        )
+        return self._enviar_mensagem(numero_telefone, mensagem)
+    
+    def enviar_aprovacao_pagamento(self, pedido: Pedido, numero_telefone: str) -> bool:
+        """Implementa IWhatsappGateway - Aprovação do pagamento."""
+        mensagem = (
+            f"✅ Ótima notícia! Seu pagamento para o Pedido {pedido.id} foi APROVADO! 🎉\n\n"
+            f"Estamos preparando o envio. Você receberá um código de rastreio em breve.\n"
+            f"Equipe Vê Jóias."
+        )
+        return self._enviar_mensagem(numero_telefone, mensagem)
+
+    def enviar_status_mudanca(self, pedido: Pedido, numero_telefone: str) -> bool:
+        """Implementa IWhatsappGateway - Mudança de status do pedido."""
+        mensagem = (
+            f"🔄 O status do seu Pedido {pedido.id} foi atualizado para: {pedido.status}\n\n"
+            f"Para mais informações, acesse nossa plataforma.\n"
+            f"Equipe Vê Jóias."
+        )
+        return self._enviar_mensagem(numero_telefone, mensagem)
+
 
 class EmailServiceGateway(IEmailService):
     """
@@ -432,4 +481,35 @@ class EmailServiceGateway(IEmailService):
             return True
         except Exception as e:
             print(f"ERRO: Falha ao enviar e-mail de aprovação do pedido {pedido.id}: {e}")
+            return False
+
+    def enviar_status_mudanca(self, pedido: Pedido) -> bool:
+        """Implementa IEmailService - Mudança de status do pedido."""
+        
+        destinatario = 'cliente@example.com' # Placeholder
+        if hasattr(pedido, 'usuario') and hasattr(pedido.usuario, 'email'):
+            destinatario = pedido.usuario.email
+             
+        assunto = f"Status Atualizado - Pedido #{pedido.id} - Vê Jóias"
+        
+        mensagem = (
+            f"Olá,\n\n"
+            f"O status do seu Pedido #{pedido.id} foi atualizado para: {pedido.status}\n"
+            f"Para mais informações, acesse nossa plataforma.\n\n"
+            f"Equipe Vê Jóias."
+        )
+        
+        remetente = settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@vejoias.com'
+
+        try:
+            send_mail(
+                assunto,
+                mensagem,
+                remetente,
+                [destinatario],
+                fail_silently=False, 
+            )
+            return True
+        except Exception as e:
+            print(f"ERRO: Falha ao enviar e-mail de mudança de status do pedido {pedido.id}: {e}")
             return False

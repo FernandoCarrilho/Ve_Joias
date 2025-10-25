@@ -1,80 +1,59 @@
 services:
   web:
     # Constrói a imagem a partir do Dockerfile na pasta atual
-    build:
-      context: .
-      # Para o ambiente de desenvolvimento, queremos que o build pare no estágio builder (opcional)
-      # target: builder # Removendo target, pois o CMD do Dockerfile é melhor para prod
-    
+    build: .
     # Mapeia a porta 8000 do contêiner para a porta 8000 da sua máquina local
     ports:
       - "8000:8000"
-      
-    # Monta o diretório do seu código para permitir hot-reloading (essencial para dev)
+    # Monta o diretório do seu código para permitir hot-reloading
+    # Mudanças no código na sua máquina serão refletidas no contêiner
     volumes:
       - .:/app
-      
     # Carrega as variáveis de ambiente do arquivo .env
     env_file:
       - .env
-      
-    # Variáveis de ambiente explícitas para o Django se conectar ao Postgres
-    environment:
-      # O host é o nome do serviço do banco de dados no docker-compose
-      - POSTGRES_HOST=db 
-      - POSTGRES_NAME=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      
     # Reinicia o contêiner automaticamente em caso de falha
     restart: always
-    
-    # Garante que o serviço 'db' seja iniciado e esteja saudável antes do 'web'
+    # Garante que o serviço 'db' seja iniciado antes do 'web'
     depends_on:
       db:
         condition: service_healthy
-        
-    # **IMPORTANTE:** Sobrescreve o CMD do Dockerfile para usar o servidor de desenvolvimento
-    # Use 'python manage.py runserver' para desenvolvimento com hot-reload.
+    # Sobrescreve o CMD do Dockerfile para rodar o servidor
+    # Certifique-se de que o host do banco de dados está correto (o nome do serviço)
     command: python manage.py runserver 0.0.0.0:8000
 
   db:
-    # Usa uma versão estável e mais leve (postgres:15-alpine)
-    image: postgres:15-alpine
+    # Usa a imagem oficial do PostgreSQL no Docker Hub
+    image: postgres:15
     # Define as variáveis de ambiente para o banco de dados
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      
-    # Persiste os dados do banco em um volume, evitando a perda de dados
+    # Mapeia a porta padrão do PostgreSQL (5432)
+    ports:
+      - "5432:5432"
+    # Persiste os dados do banco em um volume, evitando a perda de dados ao parar o contêiner
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      
-    # Verifica se o PostgreSQL está pronto
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"] # Adicionando DB name
+      # Verifica se o PostgreSQL está pronto para conexões
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   redis:
-    # Usando uma versão específica e a imagem 'alpine' (mais leve)
-    image: redis:7-alpine
+    image: redis:latest
     container_name: redis
+    command: >
+      redis-server --port 6379 --appendonly yes
+    volumes:
+      - redis_data:/data
     restart: always
     ports:
       - 6379:6379
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      # Verifica se o Redis está vivo
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
 
   evolution-api:
     container_name: evolution_api
@@ -94,7 +73,8 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_healthy # Mudando para healthy, já que adicionamos healthcheck
+        condition: service_started
+      
 
 # Define os volumes que serão usados pelos serviços
 volumes:

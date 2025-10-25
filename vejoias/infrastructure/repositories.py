@@ -16,16 +16,26 @@ import random # Para o Mock de Pagamento
 import json # Para lidar com o campo JSON de endereço no Pedido (se for o caso)
 
 # Importações da Camada CORE (ENTIDADES e INTERFACES)
+from django.contrib.auth import get_user_model
+
+# Importações dos Modelos Django
+from vejoias.catalog.models import Joia as JoiaModel, Categoria as CategoriaModel, Subcategoria as SubcategoriaModel
+from vejoias.vendas.models import ( 
+    Pedido as PedidoModel, 
+    ItemPedido as ItemPedidoModel, 
+    Endereco as EnderecoModel
+)
+from vejoias.carrinho.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
+
 from vejoias.core.entities import (
     Joia, Categoria, Carrinho, ItemCarrinho, Pedido, ItemPedido, 
     Usuario, Endereco, TransacaoPagamento
 )
-from vejoias.core.interfaces import (
-    JoiaRepositoryInterface, 
-    CarrinhoRepositoryInterface, 
-    PedidoRepositoryInterface, 
-    PagamentoGatewayInterface,
-    BaseRepositoryInterface
+from vejoias.core.ports import (
+    IJoiaRepository,
+    ICarrinhoRepository,
+    IPedidoRepository,
+    IGatewayPagamento,
 )
 from vejoias.core.exceptions import (
     JoiaNaoEncontradaError, 
@@ -35,24 +45,10 @@ from vejoias.core.exceptions import (
     PagamentoFalhouError
 )
 
-# Importações dos Mapeadores (do próprio módulo de infraestrutura)
 from .mappers import (
     JoiaMapper, EnderecoMapper, ItemCarrinhoMapper, CarrinhoMapper,
     ItemPedidoMapper, PedidoMapper, UsuarioMapper, CategoriaMapper, SubcategoriaMapper
 )
-
-from vejoias.core.use_cases import IRepositorioJoias, IRepositorioCarrinhos, IRepositorioPedidos
-
-# Importações dos Modelos Django
-# Assumimos a estrutura de módulos do repositório original para modelos
-from vejoias.catalog.models import Joia as JoiaModel, Categoria as CategoriaModel, Subcategoria as SubcategoriaModel
-from vejoias.vendas.models import ( 
-    Pedido as PedidoModel, 
-    ItemPedido as ItemPedidoModel, 
-    Endereco as EnderecoModel
-)
-from vejoias.carrinho.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -61,7 +57,7 @@ User = get_user_model()
 # 1. REPOSITÓRIOS (Implementação Django ORM)
 # ====================================================================
 
-class JoiaRepositoryDjango(JoiaRepositoryInterface):
+class JoiaRepositoryDjango(IJoiaRepository):
     """Implementação do JoiaRepository usando o Django ORM."""
 
     def buscar_por_id(self, id: int) -> Optional[Joia]:
@@ -114,6 +110,17 @@ class JoiaRepositoryDjango(JoiaRepositoryInterface):
         # Garante que a entidade retorne com o ID
         return JoiaMapper.to_entity(model)
 
+    def atualizar_estoque(self, joia_id: str, quantidade: int) -> None:
+        """
+        Atualiza o estoque de uma joia após uma venda/compra.
+        """
+        joia = JoiaModel.objects.get(pk=joia_id)
+        if joia.estoque >= quantidade:
+            joia.estoque -= quantidade
+            joia.save()
+        else:
+            raise EstoqueInsuficienteError(f"Estoque insuficiente para a Joia ID {joia_id}.")
+
     def deletar(self, joia_id: int):
         try:
             JoiaModel.objects.get(pk=joia_id).delete()
@@ -125,7 +132,7 @@ class JoiaRepositoryDjango(JoiaRepositoryInterface):
         return self.buscar_por_id(id)
 
 
-class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
+class CarrinhoRepositoryDjango(ICarrinhoRepository):
     """Implementação do CarrinhoRepository usando o Django ORM."""
 
     def buscar_por_usuario(self, usuario: Usuario) -> Carrinho:
@@ -150,6 +157,10 @@ class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
         # O CarrinhoMapper precisa que os itens estejam carregados (o prefetch ajuda nisso)
         # O mapper irá converter os ItemCarrinhoModels em ItemCarrinhoEntities.
         return CarrinhoMapper.to_entity(carrinho_model)
+
+    def buscar_ou_criar(self, usuario: Usuario) -> Carrinho:
+        """Busca um carrinho existente ou cria um novo se não existir."""
+        return self.buscar_por_usuario(usuario)
 
     @transaction.atomic
     def salvar(self, carrinho: Carrinho) -> Carrinho:
@@ -205,6 +216,43 @@ class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
         return carrinho
 
     @transaction.atomic
+    def salvar_item(self, carrinho: Carrinho, item: ItemCarrinho) -> None:
+        """
+        Salva um item específico no carrinho.
+        """
+        try:
+            carrinho_model = CarrinhoModel.objects.get(pk=carrinho.id)
+            # Tenta encontrar o item existente
+            try:
+                item_model = ItemCarrinhoModel.objects.get(
+                    carrinho=carrinho_model,
+                    joia_id=item.joia_id
+                )
+                # Atualiza a quantidade
+                item_model.quantidade = item.quantidade
+                item_model.save()
+            except ItemCarrinhoModel.DoesNotExist:
+                # Cria um novo item
+                item_model = ItemCarrinhoMapper.to_model(item, carrinho_id=carrinho.id)
+                item_model.save()
+        except CarrinhoModel.DoesNotExist:
+            raise ItemNaoEncontradoError(f"Carrinho ID {carrinho.id} não existe.")
+
+    @transaction.atomic
+    def remover_item(self, carrinho: Carrinho, joia_id: str) -> None:
+        """
+        Remove um item específico do carrinho.
+        """
+        try:
+            carrinho_model = CarrinhoModel.objects.get(pk=carrinho.id)
+            ItemCarrinhoModel.objects.filter(
+                carrinho=carrinho_model,
+                joia_id=joia_id
+            ).delete()
+        except CarrinhoModel.DoesNotExist:
+            raise ItemNaoEncontradoError(f"Carrinho ID {carrinho.id} não existe.")
+
+    @transaction.atomic
     def limpar_carrinho(self, usuario: Usuario):
         """Remove todos os ItemCarrinhoModels do CarrinhoModel do usuário."""
         try:
@@ -215,13 +263,12 @@ class CarrinhoRepositoryDjango(CarrinhoRepositoryInterface):
             pass # Se o carrinho não existe, não há o que limpar
 
 
-class PedidoRepositoryDjango(BaseRepositoryInterface): # Mudança da interface para a base, pois a PedidoRepositoryInterface tem métodos diferentes
+class PedidoRepositoryDjango(IPedidoRepository):
     """Implementação do PedidoRepository usando o Django ORM."""
 
-    def buscar_por_id(self, id: int) -> Optional[Pedido]:
+    def buscar_por_id(self, pedido_id: int) -> Optional[Pedido]:
         try:
-            # Pré-carrega usuário e itens
-            model = PedidoModel.objects.select_related('usuario').prefetch_related('itens').get(pk=id)
+            model = PedidoModel.objects.select_related('usuario').prefetch_related('itens').get(pk=pedido_id)
             return PedidoMapper.to_entity(model)
         except PedidoModel.DoesNotExist:
             return None
@@ -230,16 +277,31 @@ class PedidoRepositoryDjango(BaseRepositoryInterface): # Mudança da interface p
         qs = PedidoModel.objects.all().select_related('usuario')
         if usuario:
             qs = qs.filter(usuario_id=usuario.id)
-            
-        # Não pré-carrega itens na listagem para performance, apenas no buscar_por_id.
         qs = qs.order_by('-data_pedido')
-        
         return [PedidoMapper.to_entity(model) for model in qs]
+
+    @transaction.atomic
+    def criar_pedido(self, pedido: Pedido) -> Pedido:
+        """
+        Cria um novo pedido no banco de dados.
+        """
+        model = PedidoMapper.to_model(pedido)
+        model.save()
+        # Salva os itens do pedido
+        for item in pedido.itens:
+            item_model = ItemPedidoMapper.to_model(item, pedido_id=model.id)
+            item_model.save()
+        return PedidoMapper.to_entity(model)
+
+    def atualizar_status(self, pedido_id: int, novo_status: str) -> None:
+        """
+        Atualiza o status de um pedido.
+        """
+        PedidoModel.objects.filter(pk=pedido_id).update(status=novo_status)
 
     @transaction.atomic
     def salvar(self, pedido: Pedido) -> Pedido:
         """Salva a Entidade Pedido, incluindo os itens."""
-        
         model = None
         if pedido.id:
             try:
@@ -282,12 +344,33 @@ class PedidoRepositoryDjango(BaseRepositoryInterface): # Mudança da interface p
                 
         return PedidoMapper.to_entity(model) # Retorna a entidade mapeada
 
+    def listar_pedidos_por_usuario(self, usuario_id: str) -> List[Pedido]:
+        """Lista todos os pedidos de um usuário."""
+        qs = PedidoModel.objects.filter(usuario_id=usuario_id).order_by('-data_pedido')
+        return [PedidoMapper.to_entity(model) for model in qs]
+
+    def listar_todos_pedidos(self, status: Optional[str] = None) -> List[Pedido]:
+        """Lista todos os pedidos, opcionalmente filtrados por status."""
+        qs = PedidoModel.objects.all()
+        if status:
+            qs = qs.filter(status=status)
+        qs = qs.order_by('-data_pedido')
+        return [PedidoMapper.to_entity(model) for model in qs]
+
+    def buscar_por_transacao_id(self, transacao_id: str) -> Optional[Pedido]:
+        """Busca um pedido pelo ID de transação do pagamento."""
+        try:
+            model = PedidoModel.objects.get(transacao_id=transacao_id)
+            return PedidoMapper.to_entity(model)
+        except PedidoModel.DoesNotExist:
+            return None
+
 
 # ====================================================================
 # 2. GATEWAYS (Mock - Simulação de Serviço Externo)
 # ====================================================================
 
-class PagamentoGatewayMock(PagamentoGatewayInterface):
+class PagamentoGatewayMock(IGatewayPagamento):
     """
     Gateway de Pagamento Mock (Simulado).
     Simula uma comunicação externa para teste e desenvolvimento.
@@ -350,9 +433,9 @@ USUARIO_TESTE = Usuario(
 
 # Joias iniciais (estoque)
 JOIAS_DB: Dict[str, Joia] = {
-    "joia-101": Joia(id="joia-101", nome="Colar Diamante Solitário", preco=Decimal("1500.00"), estoque=5),
-    "joia-102": Joia(id="joia-102", nome="Anel Ouro Rosé Zircônia", preco=Decimal("450.50"), estoque=12),
-    "joia-103": Joia(id="joia-103", nome="Brincos de Pérola Clássicos", preco=Decimal("300.00"), estoque=20),
+    "joia-101": Joia(id="joia-101", nome="Colar Diamante Solitário", slug="colar-diamante-solitario", descricao="Elegante colar de diamante solitário", preco=Decimal("1500.00"), estoque=5),
+    "joia-102": Joia(id="joia-102", nome="Anel Ouro Rosé Zircônia", slug="anel-ouro-rose-zirconia", descricao="Anel delicado em ouro rosé com zircônia", preco=Decimal("450.50"), estoque=12),
+    "joia-103": Joia(id="joia-103", nome="Brincos de Pérola Clássicos", slug="brincos-de-perola-classicos", descricao="Brincos clássicos com pérolas naturais", preco=Decimal("300.00"), estoque=20),
 }
 
 # Carrinhos ativos (vazio por padrão)
@@ -368,7 +451,7 @@ PEDIDOS_DB: Dict[str, Pedido] = {}
 # REPOSITÓRIOS (Implementações Concretas)
 # ====================================================================
 
-class JoiaRepository(IRepositorioJoias):
+class JoiaRepository(IJoiaRepository):
     """
     Implementação do Repositório de Joias usando armazenamento in-memory (JOIAS_DB).
     Implementa IRepositorioJoias.
@@ -386,26 +469,36 @@ class JoiaRepository(IRepositorioJoias):
         self, 
         em_estoque: bool = True, 
         busca: Optional[str] = None, 
-        categoria_slug: Optional[str] = None
+        categoria_slug: Optional[str] = None,
+        em_destaque: bool = False
     ) -> List[Joia]:
-        """Implementa IRepositorioJoias. Busca joias filtrando por critérios."""
+        """Busca joias filtrando por critérios."""
         
-        resultados = []
-        for joia in JOIAS_DB.values():
-            if em_estoque and joia.estoque <= 0:
-                continue
-            
-            # Simulação básica de busca
-            if busca and busca.lower() not in joia.nome.lower():
-                continue
-                
-            # Simulação básica de categoria (não implementada na entidade Joia, mas mantida para o contrato)
-            if categoria_slug and categoria_slug not in joia.nome:
-                 continue
+        qs = JoiaModel.objects.all().select_related('categoria', 'subcategoria')
+        
+        if em_estoque:
+            qs = qs.filter(estoque__gt=0)
 
-            resultados.append(joia)
+        if em_destaque:
+            qs = qs.filter(em_destaque=True)
+
+        if busca:
+            # Busca por nome, descrição ou categoria
+            qs = qs.filter(
+                Q(nome__icontains=busca) | 
+                Q(descricao__icontains=busca) |
+                Q(categoria__nome__icontains=busca)
+            )
             
-        return resultados
+        if categoria_slug:
+            qs = qs.filter(categoria__slug=categoria_slug)
+            
+        return [JoiaMapper.to_entity(model) for model in qs]
+
+    def buscar_categorias_destaque(self) -> List[Categoria]:
+        """Retorna as categorias em destaque."""
+        categorias = CategoriaModel.objects.filter(em_destaque=True)
+        return [CategoriaMapper.to_entity(model) for model in categorias]
 
     def salvar(self, joia: Joia) -> Joia:
         """Implementa IRepositorioJoias. Salva ou atualiza uma joia."""
@@ -431,7 +524,7 @@ class JoiaRepository(IRepositorioJoias):
             # Em um DB real, isto seria um 'UPDATE'
 
 
-class CarrinhoRepository(IRepositorioCarrinhos):
+class CarrinhoRepository(ICarrinhoRepository):
     """
     Implementação do Repositório de Carrinho usando armazenamento in-memory (CARINHOS_DB).
     Implementa IRepositorioCarrinhos.
@@ -445,14 +538,46 @@ class CarrinhoRepository(IRepositorioCarrinhos):
         usuario_id = usuario.id
         if usuario_id not in CARINHOS_DB:
             # Cria um carrinho vazio se não for encontrado (simula 'lazy loading')
-            CARINHOS_DB[usuario_id] = Carrinho(usuario_id=usuario_id)
+            CARINHOS_DB[usuario_id] = Carrinho(usuario_id=usuario_id, itens=[])
             
         return CARINHOS_DB[usuario_id]
+
+    def buscar_ou_criar(self, usuario: Usuario) -> Carrinho:
+        """Busca um carrinho existente ou cria um novo se não existir."""
+        return self.buscar_por_usuario(usuario)
 
     def salvar(self, carrinho: Carrinho) -> Carrinho:
         """Implementa IRepositorioCarrinhos. Salva (ou atualiza) o estado do carrinho."""
         CARINHOS_DB[carrinho.usuario_id] = carrinho
         return carrinho
+
+    def salvar_item(self, carrinho: Carrinho, item: ItemCarrinho) -> None:
+        """Salva um item no carrinho."""
+        current_carrinho = CARINHOS_DB.get(carrinho.usuario_id)
+        if not current_carrinho:
+            current_carrinho = Carrinho(usuario_id=carrinho.usuario_id, itens=[])
+            CARINHOS_DB[carrinho.usuario_id] = current_carrinho
+
+        # Procura se o item já existe no carrinho
+        for i, existing_item in enumerate(current_carrinho.itens):
+            if existing_item.joia_id == item.joia_id:
+                # Atualiza a quantidade do item existente
+                current_carrinho.itens[i] = item
+                break
+        else:
+            # Se não encontrou o item, adiciona ao carrinho
+            current_carrinho.itens.append(item)
+
+        CARINHOS_DB[carrinho.usuario_id] = current_carrinho
+
+    def remover_item(self, carrinho: Carrinho, joia_id: str) -> None:
+        """Remove um item do carrinho."""
+        current_carrinho = CARINHOS_DB.get(carrinho.usuario_id)
+        if current_carrinho:
+            current_carrinho.itens = [
+                item for item in current_carrinho.itens if item.joia_id != joia_id
+            ]
+            CARINHOS_DB[carrinho.usuario_id] = current_carrinho
 
     def limpar_carrinho(self, usuario: Usuario):
         """Implementa IRepositorioCarrinhos. Remove o carrinho do usuário após o checkout."""
@@ -461,19 +586,19 @@ class CarrinhoRepository(IRepositorioCarrinhos):
             del CARINHOS_DB[usuario_id]
 
 
-class PedidoRepository(IRepositorioPedidos):
+class PedidoRepository(IPedidoRepository):
     """
     Implementação do Repositório de Pedidos usando armazenamento in-memory (PEDIDOS_DB).
-    Implementa IRepositorioPedidos.
+    Implementa IPedidoRepository.
     """
     
     def buscar_por_id(self, pedido_id: str) -> Optional[Pedido]:
-        """Implementa IRepositorioPedidos. Busca um pedido pelo seu ID."""
+        """Implementa IPedidoRepository. Busca um pedido pelo seu ID."""
         return PEDIDOS_DB.get(pedido_id)
 
     def salvar(self, pedido: Pedido) -> Pedido:
         """
-        Implementa IRepositorioPedidos. Salva um novo pedido. 
+        Implementa IPedidoRepository. Salva um novo pedido. 
         Em um DB real, o ID seria gerado pelo banco.
         """
         if not pedido.id:
@@ -484,7 +609,7 @@ class PedidoRepository(IRepositorioPedidos):
         return pedido
 
     def listar(self, usuario: Optional[Usuario] = None) -> List[Pedido]:
-        """Implementa IRepositorioPedidos. Retorna a lista de pedidos, filtrada por usuário se fornecido."""
+        """Implementa IPedidoRepository. Retorna a lista de pedidos, filtrada por usuário se fornecido."""
         if usuario:
             return [
                 pedido for pedido in PEDIDOS_DB.values() 
@@ -495,10 +620,46 @@ class PedidoRepository(IRepositorioPedidos):
 
     def buscar_por_transacao_id(self, transacao_id: str) -> Optional[Pedido]:
         """
-        Implementa IRepositorioPedidos. Busca um pedido pelo ID de Transação,
+        Implementa IPedidoRepository. Busca um pedido pelo ID de Transação,
         crucial para o Use Case de Webhook/IPN.
         """
         return next(
             (pedido for pedido in PEDIDOS_DB.values() if pedido.transacao_id == transacao_id),
             None
         )
+        
+    def criar_pedido(self, pedido: Pedido) -> Pedido:
+        """
+        Cria um novo pedido no repositório.
+        """
+        if not pedido.id:
+            pedido.id = str(uuid.uuid4())
+            pedido.data_pedido = datetime.now()
+            PEDIDOS_DB[pedido.id] = pedido
+        return pedido
+
+    def atualizar_status(self, pedido_id: str, novo_status: str) -> None:
+        """
+        Atualiza o status de um pedido.
+        """
+        if pedido := PEDIDOS_DB.get(pedido_id):
+            pedido.status = novo_status
+            PEDIDOS_DB[pedido_id] = pedido
+
+    def listar_pedidos_por_usuario(self, usuario_id: str) -> List[Pedido]:
+        """
+        Lista todos os pedidos de um usuário específico.
+        """
+        return [
+            pedido for pedido in PEDIDOS_DB.values()
+            if pedido.usuario_id == usuario_id
+        ]
+
+    def listar_todos_pedidos(self, status: Optional[str] = None) -> List[Pedido]:
+        """
+        Lista todos os pedidos, opcionalmente filtrados por status.
+        """
+        pedidos = list(PEDIDOS_DB.values())
+        if status:
+            pedidos = [pedido for pedido in pedidos if pedido.status == status]
+        return pedidos

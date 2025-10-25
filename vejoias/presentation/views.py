@@ -1,59 +1,40 @@
 from django.views import View
+from django.views.generic import ListView, DetailView, View
 from django.urls import reverse
-from django.shortcuts import render, redirect, get_object_or_404, HttpResponseRedirect
-from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render, redirect, HttpResponseRedirect
+from django.http import JsonResponse, Http404, HttpResponseServerError
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, logout
-from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from rest_framework import viewsets
-from .serializers import JoiaSerializer, CarrinhoSerializer, ItemCarrinhoSerializer, CheckoutSerializer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.http import Http404, HttpResponseServerError
 import requests
-from django.views.generic import ListView 
-from vejoias.core.use_cases import AtualizarStatusManual, StatusInvalidoError, BuscarPedidoPorId, PedidoNaoEncontradoError
 
-
-
-# Importamos as classes que criamos nas camadas anteriores
 from vejoias.infrastructure.repositories import (
     JoiaRepository,
     CarrinhoRepository,
     PedidoRepository,
 )
 from vejoias.infrastructure.gateways import MercadoPagoGateway, EvolutionAPIGateway, EmailServiceGateway
-from vejoias.infrastructure.models import Joia as JoiaModel
-from vejoias.core.use_cases import (
-    AdicionarItemAoCarrinho,
-    RemoverItemDoCarrinho,
-    CriarPedido,
-    ListarPedidos,
-    BuscarPedidosPorUsuario, # Adicionado novo Use Case
-    
-)
+from vejoias.core.use_cases import GerenciarCarrinhoUseCase, ListarPedidosDoUsuarioUseCase, CriarPedidoUseCase
 from vejoias.core.exceptions import (
     EstoqueInsuficienteError,
     ItemNaoEncontradoError,
     CarrinhoVazioError,
     PagamentoFalhouError,
 )
-from vejoias.core.entities import Usuario, Endereco
-from vejoias.core.use_cases import AtualizarStatusPedido
+from vejoias.core.entities import Usuario
 
-from .forms import (
-    AdicionarItemCarrinhoForm,
-    CheckoutForm,
-    RegistroForm,
-    LoginForm,
-    JoiaForm
-)
+from vejoias.infrastructure.models import Joia as JoiaModel
+from .serializers import JoiaSerializer, CarrinhoSerializer, CheckoutSerializer
+from .forms import AdicionarItemCarrinhoForm, CheckoutForm, RegistroForm, LoginForm
+from vejoias.core.use_cases import GerenciarPedidosAdminUseCase
 
 
 # ====================================================================
@@ -68,100 +49,172 @@ pagamento_gateway = MercadoPagoGateway()
 whatsapp_notifier = EvolutionAPIGateway()
 email_service = EmailServiceGateway()
 # pedido_repo = PedidoRepository() # Linha duplicada removida
-notificacao_service = AtualizarStatusManual(pedido_repo)
 
 
-@login_required
-def meu_perfil(request):
+class PerfilUsuarioView(LoginRequiredMixin, View):
     """View para a página de perfil do usuário."""
-    # O contexto já estava correto, mas garantindo as URLs nomeadas.
-    context = {
-        'usuario': request.user,
-    }
-    return render(request, 'perfil.html', context)
+    template_name = 'perfil.html'
+
+    def get(self, request):
+        context = {
+            'usuario': request.user,
+        }
+        return render(request, self.template_name, context)
 
 
-# -- NOVAS VIEWS PARA ROTEAMENTO DE PERFIL (Vazias por enquanto) --
-
-@login_required
-def editar_perfil(request):
+class EditarPerfilView(LoginRequiredMixin, View):
     """View placeholder para Editar Informações de Perfil."""
-    # Aqui, você usaria um formulário para User/Profile
-    context = {'usuario': request.user}
-    return render(request, 'perfil/editar_perfil.html', context)
+    template_name = 'perfil/editar_perfil.html'
 
-@login_required
-def alterar_senha(request):
+    def get(self, request):
+        context = {'usuario': request.user}
+        return render(request, self.template_name, context)
+
+
+class AlterarSenhaView(LoginRequiredMixin, View):
     """View placeholder para Alterar Senha."""
-    # Django tem views built-in, mas criamos um placeholder para rota customizada
-    context = {'usuario': request.user}
-    return render(request, 'perfil/alterar_senha.html', context)
+    template_name = 'perfil/alterar_senha.html'
 
-@login_required
-def historico_pedidos(request):
+    def get(self, request):
+        context = {'usuario': request.user}
+        return render(request, self.template_name, context)
+
+
+class HistoricoPedidosView(LoginRequiredMixin, View):
     """View para listar o histórico de pedidos do usuário logado."""
-    usuario_entity = Usuario(id=request.user.id)
-    
-    # Use Case para buscar pedidos por usuário
-    uc_buscar_pedidos = BuscarPedidosPorUsuario(pedido_repo)
-    pedidos = uc_buscar_pedidos.execute(usuario=usuario_entity)
-    
-    context = {
-        'pedidos': pedidos,
-    }
-    return render(request, 'perfil/historico_pedidos.html', context)
+    template_name = 'perfil/historico_pedidos.html'
+
+    def get(self, request):
+        usuario_entity = Usuario(id=request.user.id)
+        
+        # Use Case para buscar pedidos por usuário
+        uc_listar_pedidos = ListarPedidosDoUsuarioUseCase(pedido_repo)
+        pedidos = uc_listar_pedidos.executar(usuario_id=usuario_entity.id)
+        
+        context = {
+            'pedidos': pedidos,
+        }
+        return render(request, self.template_name, context)
 
 
 # -- FIM DAS NOVAS VIEWS DE PERFIL --
 
-def lista_joias(request):
+class HomeView(View):
     """
-    View para a página inicial e listagem de joias (agora buscando todas).
+    View para a página inicial da loja.
     """
-    try:
-        joias = joia_repo.buscar_todos() 
-    except Exception as e:
-        messages.error(request, f"Erro ao carregar o catálogo de joias: {e}")
-        joias = []
+    template_name = 'home.html'
 
-    context = {
-        'joias': joias
-    }
-    return render(request, 'lista_joias.html', context)
+    def get(self, request):
+        try:
+            # Busca joias em destaque
+            produtos_destaque = joia_repo.buscar_por_criterios(em_destaque=True)[:8]
+            if not produtos_destaque:  # Se não houver joias em destaque, pega as mais recentes
+                produtos_destaque = joia_repo.buscar_todos()[:8]
+                
+            # Busca categorias em destaque
+            categorias = joia_repo.buscar_categorias_destaque()[:3]
+            
+        except Exception as e:
+            messages.error(request, f"Erro ao carregar os dados: {e}")
+            produtos_destaque = []
+            categorias = []
 
-
-def detalhe_joia(request, joia_id):
-    """
-    Busca os detalhes da joia.
-    """
-    # A URL da API deve apontar para o host do servidor Django (localhost:8000)
-    api_url = f"http://localhost:8000/api/joias/{joia_id}/"
-    
-    try:
-        # Faz a requisição HTTP para buscar o produto
-        response = requests.get(api_url)
-        response.raise_for_status() # Levanta um erro se o status for 4xx ou 5xx
-
-        # A resposta é JSON, que é convertida em um dicionário Python
-        joia_data = response.json()
-        
-        carrinho = None
-        if request.user.is_authenticated:
-            carrinho = carrinho_repo.buscar_por_usuario(Usuario(id=request.user.id))
-        
         context = {
-            'joia': joia_data, 
-            'form': AdicionarItemCarrinhoForm(initial={'joia_id': joia_id}),
-            'carrinho': carrinho,
+            'produtos_destaque': produtos_destaque,
+            'categorias_destaque': categorias,
         }
-        return render(request, 'detalhe_joia.html', context)
-        
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            raise Http404("Jóia não encontrada.")
-        return HttpResponseServerError("Erro de comunicação com o serviço de catálogo.")
-    except requests.exceptions.RequestException:
-        return HttpResponseServerError("Erro ao conectar com o serviço de API. Verifique se o servidor está ativo.")
+        return render(request, self.template_name, context)
+
+
+class ListaJoiasView(View):
+    """
+    View para a página de listagem de joias.
+    """
+    template_name = 'lista_joias.html'
+
+    def get(self, request):
+        try:
+            joias = joia_repo.buscar_todos()
+        except Exception as e:
+            messages.error(request, f"Erro ao carregar o catálogo de joias: {e}")
+            joias = []
+
+        context = {
+            'joias': joias
+        }
+        return render(request, self.template_name, context)
+
+
+class ListaJoiasPorCategoriaView(View):
+    """
+    View para a página de listagem de joias por categoria.
+    """
+    template_name = 'lista_joias.html'
+
+    def get(self, request, slug):
+        try:
+            joias = joia_repo.buscar_por_criterios(em_estoque=True, categoria_slug=slug)
+        except Exception as e:
+            messages.error(request, f"Erro ao carregar o catálogo de joias: {e}")
+            joias = []
+
+        context = {
+            'joias': joias,
+            'categoria_slug': slug
+        }
+        return render(request, self.template_name, context)
+
+
+class DetalheJoiaView(View):
+    """
+    View para a página de detalhes de uma joia.
+    """
+    template_name = 'detalhe_joia.html'
+
+    def get(self, request, pk):
+        api_url = f"http://localhost:8000/api/joias/{pk}/"
+
+        try:
+            response = requests.get(api_url)
+            response.raise_for_status()
+
+            joia_data = response.json()
+
+            carrinho = None
+            if request.user.is_authenticated:
+                carrinho = carrinho_repo.buscar_por_usuario(Usuario(id=request.user.id))
+
+            context = {
+                'joia': joia_data,
+                'form': AdicionarItemCarrinhoForm(initial={'joia_id': pk}),
+                'carrinho': carrinho,
+            }
+            return render(request, self.template_name, context)
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise Http404("Jóia não encontrada.")
+            return HttpResponseServerError("Erro de comunicação com o serviço de catálogo.")
+        except requests.exceptions.RequestException:
+            return HttpResponseServerError("Erro ao conectar com o serviço de API. Verifique se o servidor está ativo.")
+
+
+class CarrinhoView(LoginRequiredMixin, View):
+    """
+    View para a página do carrinho de compras.
+    """
+    template_name = 'carrinho.html'
+
+    def get(self, request):
+        usuario_entity = Usuario(id=request.user.id)
+        gerenciar_carrinho_uc = GerenciarCarrinhoUseCase(carrinho_repo, joia_repo)
+        carrinho = gerenciar_carrinho_uc.obter_carrinho(usuario=usuario_entity)
+        context = {
+            'carrinho': carrinho,
+            'url_confirmar_pagamento': reverse('processar_checkout'),
+        }
+        return render(request, self.template_name, context)
 
 
 @login_required
@@ -177,11 +230,12 @@ def adicionar_ao_carrinho(request):
             quantidade = form.cleaned_data['quantidade']
 
             usuario_entity = Usuario(id=request.user.id)
-            adicionar_item_uc = AdicionarItemAoCarrinho(carrinho_repo, joia_repo)
+            gerenciar_carrinho_uc = GerenciarCarrinhoUseCase(carrinho_repo, joia_repo)
 
             try:
-                carrinho_atualizado = adicionar_item_uc.execute(
-                    usuario=usuario_entity,
+                carrinho = gerenciar_carrinho_uc.obter_carrinho(usuario=usuario_entity)
+                carrinho_atualizado = gerenciar_carrinho_uc.adicionar_item(
+                    carrinho=carrinho,
                     joia_id=joia_id,
                     quantidade=quantidade
                 )
@@ -199,24 +253,29 @@ def adicionar_ao_carrinho(request):
 
 
 @login_required
-def ver_carrinho(request):
+def remover_do_carrinho(request, joia_id):
     """
-    CORREÇÃO: Adicionado 'url_confirmar_pagamento' ao contexto.
-    View para a página do carrinho de compras.
+    Remove item do carrinho (requisição AJAX).
     """
-    usuario_entity = Usuario(id=request.user.id)
-    carrinho = carrinho_repo.buscar_por_usuario(usuario_entity)
-    context = {
-        'carrinho': carrinho,
-        # CORRIGIDO: Passa a URL nomeada para o botão Confirmar Pagamento no template
-        'url_confirmar_pagamento': reverse('processar_checkout'), 
-    }
-    return render(request, 'carrinho.html', context)
+    if request.method == 'POST':
+        usuario_entity = Usuario(id=request.user.id)
+        gerenciar_carrinho_uc = GerenciarCarrinhoUseCase(carrinho_repo, joia_repo)
 
+        try:
+            carrinho = gerenciar_carrinho_uc.obter_carrinho(usuario=usuario_entity)
+            carrinho_atualizado = gerenciar_carrinho_uc.remover_item(
+                carrinho=carrinho,
+                joia_id=joia_id
+            )
+            return JsonResponse({
+                'success': True,
+                'message': 'Item removido do carrinho!',
+                'total_itens': sum(item.quantidade for item in carrinho_atualizado.itens)
+            })
+        except ItemNaoEncontradoError as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
-# vejoias/presentation/views.py
-
-# ... (restante do código das views processar_checkout, detalhe_pedido, registro, login_usuario, etc., mantido) ...
+    return JsonResponse({'success': False, 'message': 'Método não permitido'}, status=405)
 
 
 @login_required
@@ -244,13 +303,13 @@ def processar_checkout(request):
             numero_do_cliente = form.cleaned_data['telefone_whatsapp']
 
             # Injeção de Dependência
-            criar_pedido_uc = CriarPedido(
+            criar_pedido_uc = CriarPedidoUseCase(
                 carrinho_repo,
-                joia_repo,
                 pedido_repo,
+                joia_repo,
                 pagamento_gateway,
-                whatsapp_notifier,
                 email_service, 
+                whatsapp_notifier,
             )
 
             try:
@@ -349,92 +408,7 @@ def logout_usuario(request):
     return redirect('lista_joias') # Redireciona para a página inicial após o logout
 
 
-@login_required
-def dashboard_admin(request):
-    """
-    View para o painel de administração.
-    """
-    if not request.user.is_staff:
-        raise PermissionDenied("Você não tem permissão para acessar esta página.")
-    
-    return render(request, 'admin/dashboard.html')
 
-
-@login_required
-def gerenciar_produtos(request):
-    # ...
-    repo = JoiaRepository() 
-    joias = repo.buscar_todos() 
-    # ...
-    context = {'joias': joias}
-    return render(request, 'gerenciar_produtos.html', context)
-
-
-# ====================================================================
-# VIEWS PARA GERENCIAR PRODUTOS
-# ====================================================================
-@login_required
-def adicionar_joia(request):
-    """
-    View para adicionar uma nova joia.
-    """
-    if not request.user.is_staff:
-        raise PermissionDenied("Você não tem permissão para acessar esta página.")
-        
-    if request.method == 'POST':
-        form = JoiaForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('gerenciar_produtos')
-    else:
-        form = JoiaForm()
-        
-    context = {'form': form, 'acao': 'Adicionar'}
-    return render(request, 'admin/form_joia.html', context)
-
-
-@login_required
-def editar_joia(request, joia_id):
-    """
-    View para editar uma joia existente.
-    """
-    if not request.user.is_staff:
-        raise PermissionDenied("Você não tem permissão para acessar esta página.")
-
-    try:
-        joia_model = JoiaModel.objects.get(id=joia_id)
-    except JoiaModel.DoesNotExist:
-        return HttpResponse("Joia não encontrada.", status=404)
-        
-    if request.method == 'POST':
-        form = JoiaForm(request.POST, instance=joia_model)
-        if form.is_valid():
-            form.save()
-            return redirect('gerenciar_produtos')
-    else:
-        form = JoiaForm(instance=joia_model)
-        
-    context = {'form': form, 'acao': 'Editar'}
-    return render(request, 'admin/form_joia.html', context)
-
-
-@login_required
-@require_POST 
-def excluir_joia(request, joia_id):
-    """
-    View para excluir uma joia.
-    """
-    if not request.user.is_staff:
-        raise PermissionDenied("Você não tem permissão para acessar esta página.")
-        
-    try:
-        joia_model = JoiaModel.objects.get(id=joia_id)
-        joia_model.delete()
-        messages.success(request, 'Jóia excluída com sucesso!')
-    except JoiaModel.DoesNotExist:
-        messages.error(request, 'Jóia não encontrada.')
-        
-    return redirect('gerenciar_produtos')
 
 
 class JoiaViewSet(viewsets.ModelViewSet):
@@ -454,6 +428,95 @@ class JoiaViewSet(viewsets.ModelViewSet):
             self.permission_classes = []
             
         return [permission() for permission in self.permission_classes]
+
+
+# ====================================================================
+# VIEWS PARA CHECKOUT
+# ====================================================================
+
+class ProcessarCheckoutView(LoginRequiredMixin, View):
+    """
+    View para processar o checkout.
+    """
+    template_name = 'checkout.html'
+
+    def get(self, request):
+        usuario_entity = Usuario(id=request.user.id)
+        carrinho = carrinho_repo.buscar_por_usuario(usuario_entity)
+
+        if not carrinho.itens:
+            messages.error(request, "Seu carrinho está vazio. Adicione itens para finalizar a compra.")
+            return redirect('ver_carrinho')
+
+        form = CheckoutForm()
+        context = {
+            'form': form,
+            'carrinho': carrinho
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        usuario_entity = Usuario(id=request.user.id)
+        carrinho = carrinho_repo.buscar_por_usuario(usuario_entity)
+
+        if not carrinho.itens:
+            messages.error(request, "Seu carrinho está vazio. Adicione itens para finalizar a compra.")
+            return redirect('ver_carrinho')
+
+        form = CheckoutForm(request.POST)
+        if form.is_valid():
+            endereco_entity = form.to_endereco_entity()
+            tipo_pagamento = form.cleaned_data['tipo_pagamento']
+            numero_do_cliente = form.cleaned_data['telefone_whatsapp']
+
+            criar_pedido_uc = CriarPedidoUseCase(
+                carrinho_repo,
+                pedido_repo,
+                joia_repo,
+                pagamento_gateway,
+                email_service,
+                whatsapp_notifier,
+            )
+
+            try:
+                pedido = criar_pedido_uc.execute(
+                    usuario=usuario_entity,
+                    tipo_pagamento=tipo_pagamento,
+                    endereco=endereco_entity,
+                    numero_telefone=numero_do_cliente
+                )
+
+                messages.success(request, f"Pedido #{pedido.id} realizado com sucesso! Você receberá a confirmação por WhatsApp.")
+                return redirect('detalhe_pedido', pedido_id=pedido.id)
+
+            except (CarrinhoVazioError, EstoqueInsuficienteError, PagamentoFalhouError) as e:
+                messages.error(request, f"Erro ao finalizar pedido: {str(e)}")
+
+        context = {
+            'form': form,
+            'carrinho': carrinho
+        }
+        return render(request, self.template_name, context)
+
+
+class DetalhePedidoView(LoginRequiredMixin, DetailView):
+    """
+    View para exibir os detalhes de um pedido.
+    """
+    template_name = 'pedido/detalhe_pedido.html'
+    context_object_name = 'pedido'
+
+    def get_object(self, queryset=None):
+        pedido_id = self.kwargs.get('pk')
+        pedido = pedido_repo.buscar_por_id(pedido_id)
+        
+        if not pedido:
+            raise Http404("Pedido não encontrado.")
+        
+        if pedido.usuario.id != self.request.user.id:
+            raise PermissionDenied("Você não tem permissão para visualizar este pedido.")
+        
+        return pedido
 
 
 class CarrinhoAPIView(APIView):
@@ -477,11 +540,12 @@ class CarrinhoAPIView(APIView):
         joia_id = request.data.get('joia_id')
         quantidade = request.data.get('quantidade', 1)
 
-        adicionar_item_uc = AdicionarItemAoCarrinho(carrinho_repo, joia_repo)
+        gerenciar_carrinho_uc = GerenciarCarrinhoUseCase(carrinho_repo, joia_repo)
         
         try:
-            carrinho_atualizado = adicionar_item_uc.execute(
-                usuario=Usuario(id=request.user.id),
+            carrinho = gerenciar_carrinho_uc.obter_carrinho(usuario=Usuario(id=request.user.id))
+            carrinho_atualizado = gerenciar_carrinho_uc.adicionar_item(
+                carrinho=carrinho,
                 joia_id=joia_id,
                 quantidade=quantidade
             )
@@ -495,11 +559,12 @@ class CarrinhoAPIView(APIView):
         Remove um item do carrinho.
         """
         joia_id = request.data.get('joia_id')
-        remover_item_uc = RemoverItemDoCarrinho(carrinho_repo)
+        gerenciar_carrinho_uc = GerenciarCarrinhoUseCase(carrinho_repo, joia_repo)
 
         try:
-            carrinho_atualizado = remover_item_uc.execute(
-                usuario=Usuario(id=request.user.id),
+            carrinho = gerenciar_carrinho_uc.obter_carrinho(usuario=Usuario(id=request.user.id))
+            carrinho_atualizado = gerenciar_carrinho_uc.remover_item(
+                carrinho=carrinho,
                 joia_id=joia_id
             )
             serializer = CarrinhoSerializer(carrinho_atualizado)
@@ -522,13 +587,13 @@ class CheckoutAPIView(APIView):
             tipo_pagamento = serializer.validated_data['tipo_pagamento']
             numero_do_cliente = serializer.validated_data.get('telefone_whatsapp')
 
-            criar_pedido_uc = CriarPedido(
+            criar_pedido_uc = CriarPedidoUseCase(
                 carrinho_repo=carrinho_repo,
-                joia_repo=joia_repo,
                 pedido_repo=pedido_repo,
+                joia_repo=joia_repo,
                 pagamento_gateway=pagamento_gateway,
+                email_service=email_service,
                 whatsapp_gateway=whatsapp_notifier,
-                email_service=email_service, 
             )
 
             try:
@@ -557,16 +622,14 @@ class WebhookMercadoPago(APIView):
         
         if topic == 'payment' and resource_id:
             
-            uc_atualizar_status = AtualizarStatusPedido(
-                pedido_repo=pedido_repo, 
-                pagamento_gateway=pagamento_gateway,
-                whatsapp_gateway=whatsapp_notifier,
+            gerenciar_pedidos_uc = GerenciarPedidosAdminUseCase(
+                pedido_repo=pedido_repo,
                 email_service=email_service,
-
+                whatsapp_gateway=whatsapp_notifier,
             )
             
             try:
-                uc_atualizar_status.execute(resource_id)
+                gerenciar_pedidos_uc.atualizar_status_manual(pedido_id=resource_id, novo_status="PROCESSANDO")
             except Exception as e:
                 print(f"Erro interno ao processar webhook {resource_id}: {e}")
 
@@ -575,65 +638,4 @@ class WebhookMercadoPago(APIView):
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
 
-class ListagemPedidosView(LoginRequiredMixin, ListView):
-    # Garante que apenas usuários logados acessem esta página
-    login_url = '/login/' 
 
-    # Configurações básicas da lista
-    template_name = 'admin/listagem_pedidos.html'
-    context_object_name = 'pedidos'
-    paginate_by = 20 
-
-    def get_queryset(self):
-        uc_listar_pedidos = ListarPedidos(pedido_repo=pedido_repo)
-        status_filtro = self.request.GET.get('status')
-        queryset = uc_listar_pedidos.execute(status=status_filtro)
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['status_selecionado'] = self.request.GET.get('status', '')
-        context['status_choices'] = ["PAGO", "PENDENTE", "CANCELADO", "PROCESSANDO", "ENVIADO"]
-        return context
-    
-
-class DetalhePedidoAdminView(LoginRequiredMixin, View):
-    template_name = 'admin/detalhe_pedido.html'
-
-    def get(self, request, pedido_id):
-        uc_detalhes = BuscarPedidoPorId(pedido_repo=pedido_repo)
-        pedido = uc_detalhes.execute(pedido_id=pedido_id)
-        
-        if not pedido:
-            raise Http404("Pedido não encontrado.") 
-
-        status_choices = ["PAGO", "PENDENTE", "PROCESSANDO", "ENVIADO", "ENTREGUE", "CANCELADO"]
-        
-        context = {
-            'pedido': pedido,
-            'status_choices': status_choices
-        }
-        return render(request, self.template_name, context)
-
-    def post(self, request, pedido_id):
-        novo_status = request.POST.get('status', '').strip()
-        
-        uc_atualizar_status = AtualizarStatusManual(
-            pedido_repo=pedido_repo,
-            notificacao_service=notificacao_service 
-        )
-        
-        try:
-            uc_atualizar_status.execute(pedido_id=pedido_id, novo_status=novo_status)
-            messages.success(request, f"Status do Pedido #{pedido_id} atualizado para {novo_status} com sucesso.")
-            
-        except PedidoNaoEncontradoError:
-            messages.error(request, f"Erro: Pedido #{pedido_id} não foi encontrado.")
-            
-        except StatusInvalidoError as e:
-            messages.error(request, f"Erro de validação: {e}")
-            
-        except Exception as e:
-            messages.error(request, f"Ocorreu uma falha inesperada ao salvar: {e}")
-        
-        return HttpResponseRedirect(reverse('admin_detalhe_pedido', args=[pedido_id]))

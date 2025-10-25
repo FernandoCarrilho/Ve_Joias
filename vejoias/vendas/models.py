@@ -13,7 +13,7 @@ class Endereco(models.Model):
     """Modelo para armazenar endereços de usuários (para faturamento e entrega)."""
     
     # Referência ao usuário, usando string para evitar importação circular
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enderecos')
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enderecos_venda')
     
     apelido = models.CharField(
         max_length=50, 
@@ -56,7 +56,7 @@ class Pedido(models.Model):
         ('REJEITADO', 'Pagamento Rejeitado'),
     ]
 
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pedidos')
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pedidos_venda')
     data_pedido = models.DateTimeField(default=timezone.now, verbose_name="Data do Pedido")
     
     # Armazena o endereço como JSON, pois o endereço de entrega
@@ -89,9 +89,9 @@ class ItemPedido(models.Model):
     # Referência ao Pedido
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens')
     
-    # Referência à Joia (Joia deve estar no app 'catalogo')
-    # Usando string 'catalogo.Joia' para referência.
-    joia = models.ForeignKey('catalogo.Joia', on_delete=models.SET_NULL, null=True) 
+    # Referência à Joia
+    # Usando string 'catalog.Joia' para referência.
+    joia = models.ForeignKey('catalog.Joia', on_delete=models.SET_NULL, null=True) 
     
     # Snapshot dos dados da joia no momento do pedido (importante para relatórios)
     nome_joia = models.CharField(max_length=255, verbose_name="Nome da Joia")
