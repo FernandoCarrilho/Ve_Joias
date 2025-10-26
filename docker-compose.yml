@@ -1,26 +1,32 @@
 services:
   web:
-    # Constrói a imagem a partir do Dockerfile na pasta atual
-    build: .
-    # Mapeia a porta 8000 do contêiner para a porta 8000 da sua máquina local
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    # Monta o diretório do seu código para permitir hot-reloading
-    # Mudanças no código na sua máquina serão refletidas no contêiner
     volumes:
       - .:/app
-    # Carrega as variáveis de ambiente do arquivo .env
+      - static_volume:/app/staticfiles  # Volume para arquivos estáticos
+      - media_volume:/app/media         # Volume para uploads de mídia
     env_file:
       - .env
-    # Reinicia o contêiner automaticamente em caso de falha
+    environment:
+      - DJANGO_SETTINGS_MODULE=vejoias.settings
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
     restart: always
-    # Garante que o serviço 'db' seja iniciado antes do 'web'
     depends_on:
       db:
         condition: service_healthy
-    # Sobrescreve o CMD do Dockerfile para rodar o servidor
-    # Certifique-se de que o host do banco de dados está correto (o nome do serviço)
-    command: python manage.py runserver 0.0.0.0:8000
+      redis:
+        condition: service_started
+    command: >
+      sh -c "
+        python manage.py wait_for_db &&
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        gunicorn vejoias.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 4"
 
   db:
     # Usa a imagem oficial do PostgreSQL no Docker Hub
@@ -81,3 +87,5 @@ volumes:
   postgres_data:
   redis_data:
   evolution_instances:
+  static_volume:
+  media_volume:

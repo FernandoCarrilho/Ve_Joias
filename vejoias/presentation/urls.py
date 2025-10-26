@@ -1,4 +1,3 @@
-# vejoias/presentation/urls.py
 """
 Define as URLs para a camada de apresentação (o frontend da loja) e as rotas de API REST.
 Inclui rotas de catálogo, carrinho, autenticação, perfil de cliente e painel administrativo,
@@ -43,15 +42,17 @@ urlpatterns = [
     # ====================================================================
     # 4. ROTAS DE PERFIL (ÁREA DO CLIENTE)
     # ====================================================================
-    path('minha-conta/', views.PerfilUsuarioView.as_view(), name='perfil_usuario'),
+    path('minha-conta/', views.UsuarioView.as_view(), name='perfil_usuario'),
     path('minha-conta/editar/', views.EditarPerfilView.as_view(), name='editar_perfil'),
     path('minha-conta/senha/', views.AlterarSenhaView.as_view(), name='alterar_senha'),
-    path('meus-pedidos/', views.HistoricoPedidosView.as_view(), name='meus_pedidos'),
+    path('meus-pedidos/', views.HistoricoPedidosView.as_view(), name='historico_pedidos'),
 
     # ====================================================================
     # 5. ROTAS ADMINISTRATIVAS
     # ====================================================================
-    path('admin/dashboard/', views_admin.DashboardAdminView.as_view(), name='dashboard_admin'),
+    # CORREÇÃO CRÍTICA: Renomeado de 'dashboard_admin' para 'admin_dashboard'
+    # para resolver o erro NoReverseMatch na interface administrativa.
+    path('admin/dashboard/', views_admin.DashboardAdminView.as_view(), name='admin_dashboard'),
     
     # Gerenciamento de Pedidos (Admin)
     path('admin/pedidos/', views_admin.GerenciarPedidosView.as_view(), name='gerenciar_pedidos'),

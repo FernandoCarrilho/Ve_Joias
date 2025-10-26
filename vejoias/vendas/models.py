@@ -1,108 +1,100 @@
 from django.db import models
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-
-# Obtém o modelo de Usuário
-User = get_user_model()
-
-# ====================================================================
-# 1. Endereco
-# ====================================================================
-
-class Endereco(models.Model):
-    """Modelo para armazenar endereços de usuários (para faturamento e entrega)."""
-    
-    # Referência ao usuário, usando string para evitar importação circular
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enderecos_venda')
-    
-    apelido = models.CharField(
-        max_length=50, 
-        verbose_name="Apelido do Endereço", 
-        help_text="Ex: 'Casa', 'Trabalho'."
-    )
-    
-    cep = models.CharField(max_length=9, verbose_name="CEP")
-    rua = models.CharField(max_length=255, verbose_name="Rua")
-    numero = models.CharField(max_length=10, verbose_name="Número")
-    complemento = models.CharField(max_length=100, blank=True, null=True, verbose_name="Complemento")
-    bairro = models.CharField(max_length=100, verbose_name="Bairro")
-    cidade = models.CharField(max_length=100, verbose_name="Cidade")
-    estado = models.CharField(max_length=2, verbose_name="Estado (UF)")
-    
-    is_principal = models.BooleanField(default=False, verbose_name="Endereço Principal")
-    
-    class Meta:
-        verbose_name = "Endereço"
-        verbose_name_plural = "Endereços"
-        unique_together = ('usuario', 'apelido')
-
-    def __str__(self):
-        return f"{self.apelido} ({self.cidade}/{self.estado})"
-
-# ====================================================================
-# 2. Pedido
-# ====================================================================
+from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
 
 class Pedido(models.Model):
-    """Modelo principal para registrar pedidos/compras."""
+    """
+    Modelo que representa um pedido/venda no sistema.
+    """
+    # Relacionamentos
+    usuario = models.ForeignKey('infrastructure.Usuario', on_delete=models.PROTECT)
 
+    # Status e Data
     STATUS_CHOICES = [
-        ('PENDENTE', 'Pagamento Pendente'),
-        ('APROVADO', 'Pagamento Aprovado'),
-        ('EM_PREPARACAO', 'Em Preparação'),
-        ('ENVIADO', 'Enviado'),
-        ('ENTREGUE', 'Entregue'),
-        ('CANCELADO', 'Cancelado'),
-        ('REJEITADO', 'Pagamento Rejeitado'),
+        ('aguardando_pagamento', 'Aguardando Pagamento'),
+        ('pago', 'Pago'),
+        ('em_preparacao', 'Em Preparação'),
+        ('enviado', 'Enviado'),
+        ('entregue', 'Entregue'),
+        ('cancelado', 'Cancelado'),
     ]
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aguardando_pagamento')
+    data_pedido = models.DateTimeField(auto_now_add=True)
+    data_modificacao = models.DateTimeField(auto_now=True)
 
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pedidos_venda')
-    data_pedido = models.DateTimeField(default=timezone.now, verbose_name="Data do Pedido")
+    # Valores
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    desconto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    frete = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
+    # Dados de Pagamento
+    FORMA_PAGAMENTO_CHOICES = [
+        ('cartao', 'Cartão de Crédito'),
+        ('boleto', 'Boleto'),
+        ('pix', 'PIX'),
+    ]
+    forma_pagamento = models.CharField(max_length=10, choices=FORMA_PAGAMENTO_CHOICES)
+    codigo_transacao = models.CharField(max_length=100, blank=True, null=True)
+
+    # Dados de Entrega (snapshot do endereço no momento do pedido)
+    nome_entrega = models.CharField(max_length=255)
+    cep_entrega = models.CharField(max_length=9)
+    rua_entrega = models.CharField(max_length=255)
+    numero_entrega = models.CharField(max_length=10)
+    complemento_entrega = models.CharField(max_length=100, blank=True, null=True)
+    bairro_entrega = models.CharField(max_length=100)
+    cidade_entrega = models.CharField(max_length=100)
+    estado_entrega = models.CharField(max_length=2)
     
-    # Armazena o endereço como JSON, pois o endereço de entrega
-    # é um "snapshot" do momento do pedido e não deve mudar se o Endereco do usuário mudar.
-    endereco_entrega_json = models.JSONField(verbose_name="Snapshot do Endereço de Entrega")
-    
-    valor_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor Total")
-    status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
-        default='PENDENTE', 
-        verbose_name="Status do Pedido"
-    )
+    # Contato
+    telefone_contato = models.CharField(max_length=15)
+    email_contato = models.EmailField()
+    observacoes = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = "Pedido"
-        verbose_name_plural = "Pedidos"
+        verbose_name = 'Pedido'
+        verbose_name_plural = 'Pedidos'
+        db_table = 'vendas_pedido'
         ordering = ['-data_pedido']
 
     def __str__(self):
-        return f"Pedido #{self.pk} - {self.get_status_display()} - Total: R$ {self.valor_total}"
+        return f"Pedido #{self.id} - {self.usuario.email}"
 
-# ====================================================================
-# 3. ItemPedido
-# ====================================================================
+    def get_status_display_custom(self):
+        """Retorna o status formatado para exibição."""
+        return dict(self.STATUS_CHOICES)[self.status]
+
+    def calcular_total(self):
+        """Calcula o total do pedido."""
+        self.subtotal = sum(item.subtotal for item in self.itens.all())
+        self.total = self.subtotal + self.frete - self.desconto
+        return self.total
 
 class ItemPedido(models.Model):
-    """Modelo para armazenar os itens (joias) que fazem parte de um pedido."""
-
-    # Referência ao Pedido
-    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens')
+    """
+    Modelo que representa um item dentro de um pedido.
+    Mantém um snapshot dos dados do produto no momento da compra.
+    """
+    pedido = models.ForeignKey(Pedido, related_name='itens', on_delete=models.CASCADE)
+    joia = models.ForeignKey('catalog.Joia', on_delete=models.PROTECT, related_name='itens_venda')
     
-    # Referência à Joia
-    # Usando string 'catalog.Joia' para referência.
-    joia = models.ForeignKey('catalog.Joia', on_delete=models.SET_NULL, null=True) 
-    
-    # Snapshot dos dados da joia no momento do pedido (importante para relatórios)
-    nome_joia = models.CharField(max_length=255, verbose_name="Nome da Joia")
-    preco_unitario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço Unitário na Compra")
-    
-    quantidade = models.PositiveIntegerField(verbose_name="Quantidade")
+    # Snapshot dos dados do produto
+    nome_produto = models.CharField(max_length=255)
+    preco_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    quantidade = models.PositiveIntegerField()
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
-        verbose_name = "Item de Pedido"
-        verbose_name_plural = "Itens de Pedido"
-        unique_together = ('pedido', 'joia') # Uma joia única por pedido
+        verbose_name = 'Item do Pedido'
+        verbose_name_plural = 'Itens do Pedido'
+        db_table = 'vendas_item_pedido'
 
     def __str__(self):
-        return f"{self.quantidade}x {self.nome_joia} (Preço: R$ {self.preco_unitario})"
+        return f"{self.quantidade}x {self.nome_produto} em Pedido #{self.pedido.id}"
+
+    def save(self, *args, **kwargs):
+        """Calcula o subtotal antes de salvar."""
+        self.subtotal = self.preco_unitario * self.quantidade
+        super().save(*args, **kwargs)

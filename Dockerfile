@@ -60,7 +60,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Cria um usuário não-root para rodar a aplicação (Boa prática de segurança)
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
-RUN chown -R appuser:appgroup /app
+
+# Cria e configura os diretórios necessários
+RUN mkdir -p /app/staticfiles /app/media
+RUN chown -R appuser:appgroup /app /app/staticfiles /app/media
+RUN chmod -R 755 /app/staticfiles /app/media
+
 USER appuser
 
 # Copia o código da aplicação (a última coisa, para otimizar o cache)

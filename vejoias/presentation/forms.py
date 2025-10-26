@@ -4,7 +4,10 @@ from datetime import datetime
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
-from .models import PerfilUsuario, Joia, Pedido, Categoria
+from vejoias.infrastructure.models import Usuario
+from vejoias.catalog.models import Joia, Categoria
+from vejoias.catalog.models import Subcategoria
+from vejoias.vendas.models import Pedido
 from decimal import Decimal
 
 # --- 1. FORMULÁRIOS DE AUTENTICAÇÃO ---
@@ -72,37 +75,15 @@ class RegistroForm(forms.ModelForm):
 
 class PerfilForm(forms.ModelForm):
     """
-    Formulário para edição dos dados do PerfilUsuario.
+    Formulário para edição dos dados do Usuario.
     """
-    # Adicionamos os campos do User que o cliente pode querer alterar
-    first_name = forms.CharField(label="Nome", max_length=150, required=False)
-    last_name = forms.CharField(label="Sobrenome", max_length=150, required=False)
-    
     class Meta:
-        model = PerfilUsuario
-        fields = ('first_name', 'last_name', 'telefone', 'endereco')
-        widgets = {
-            'endereco': forms.Textarea(attrs={'rows': 3}),
-        }
+        model = Usuario
+        fields = ('first_name', 'last_name', 'telefone')
 
-    # Sobrescrevemos o construtor para inicializar os campos do User
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.usuario:
-            self.initial['first_name'] = self.instance.usuario.first_name
-            self.initial['last_name'] = self.instance.usuario.last_name
-
-    # Sobrescrevemos o save para salvar nos dois modelos (User e PerfilUsuario)
-    def save(self, commit=True):
-        perfil = super().save(commit=False)
-        user = perfil.usuario
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
-        
-        if commit:
-            user.save()
-            perfil.save()
-        return perfil
+    # Já não precisamos sobrescrever __init__ ou save pois agora
+    # estamos editando diretamente o modelo Usuario que herda de AbstractUser
+    # e já tem os campos first_name e last_name
 
 
 class SenhaForm(PasswordChangeForm):
@@ -151,12 +132,11 @@ class JoiaForm(forms.ModelForm):
     class Meta:
         model = Joia
         # Todos os campos necessários para o template detalhe_joia_admin.html
-        fields = ['nome', 'descricao', 'preco', 'estoque', 'categoria', 'material', 'peso_gramas', 'imagem_url', 'ativa']
+        fields = ['nome', 'descricao', 'preco', 'estoque', 'categoria', 'subcategoria', 'imagem_principal', 'disponivel', 'em_destaque']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
             'preco': forms.NumberInput(attrs={'step': '0.01'}),
-            'peso_gramas': forms.NumberInput(attrs={'step': '0.01'}),
-            'imagem_url': forms.URLInput(attrs={'placeholder': 'URL de imagem (ex: https://...)', 'class': 'w-full'}),
+            'imagem_principal': forms.FileInput(attrs={'class': 'w-full'}),
         }
 
 

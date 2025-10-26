@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from vejoias.infrastructure.models import Joia as JoiaModel, Endereco
-from vejoias.infrastructure.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
+from vejoias.catalog.models import Joia as JoiaModel
+from vejoias.infrastructure.models import Endereco
+from vejoias.carrinho.models import Carrinho as CarrinhoModel, ItemCarrinho as ItemCarrinhoModel
 
 class JoiaSerializer(serializers.ModelSerializer):
     class Meta:

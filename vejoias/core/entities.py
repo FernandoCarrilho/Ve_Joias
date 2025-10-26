@@ -54,11 +54,17 @@ class Joia:
     descricao: str
     preco: Decimal
     estoque: int
+    categoria_id: str
+    subcategoria_id: Optional[str] = None
     desconto: int = 0
+    disponivel: bool = True
     em_destaque: bool = False
     imagem_principal: Optional[str] = None
     categoria: Optional[Categoria] = None
+    subcategoria: Optional[Subcategoria] = None
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    data_criacao: datetime = field(default_factory=datetime.now)
+    data_atualizacao: Optional[datetime] = None
     
     @property
     def preco_com_desconto(self) -> Decimal:
@@ -70,53 +76,45 @@ class Joia:
 @dataclass
 class ItemCarrinho:
     """Entidade que representa um item no carrinho."""
-    joia: Optional[Joia]
-    quantidade: int = 0
+    joia_id: str
+    quantidade: int
+    preco_unitario: Decimal
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    joia: Optional[Joia] = None
 
     @property
     def subtotal(self) -> Decimal:
-        """Calcula o subtotal do item (preço * quantidade)."""
-        return self.joia.preco * self.quantidade if self.joia else Decimal('0')
+        """Calcula o subtotal do item."""
+        return self.preco_unitario * self.quantidade
 
 @dataclass
 class Carrinho:
     """Entidade do Carrinho de Compras."""
-    usuario: Optional[Usuario] = None
-    itens: List[ItemCarrinho] = field(default_factory=list)
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    usuario_id: Optional[str] = None
+    sessao_key: Optional[str] = None
+    data_criacao: datetime = field(default_factory=datetime.now)
+    data_atualizacao: Optional[datetime] = None
+    itens: List[ItemCarrinho] = field(default_factory=list)
 
     @property
     def total(self) -> Decimal:
         """Calcula o total do carrinho."""
         return sum(item.subtotal for item in self.itens)
-    
-@dataclass
-class CarrinhoItem:
-    """Item dentro da Entidade Carrinho."""
-    joia_id: str
-    quantidade: int
-
-@dataclass
-class Carrinho:
-    """Entidade Carrinho de Compras, vinculada a um usuário."""
-    usuario_id: str
-    itens: List[CarrinhoItem] = field(default_factory=list)
-
-    @property
-    def total_itens(self) -> int:
-        return sum(item.quantidade for item in self.itens)
 
 @dataclass
 class ItemPedido:
     """Snapshot de um item no momento da compra (imutável)."""
+    pedido_id: str
     joia_id: str
-    nome_joia: str
+    nome_produto: str
     preco_unitario: Decimal
     quantidade: int
+    subtotal: Decimal = field(init=False)
 
-    def calcular_subtotal(self) -> Decimal:
-        return self.preco_unitario * self.quantidade
+    def __post_init__(self):
+        """Calcula o subtotal após a inicialização."""
+        self.subtotal = self.preco_unitario * self.quantidade
 
 @dataclass
 class TransacaoPagamento:
@@ -130,13 +128,16 @@ class TransacaoPagamento:
 @dataclass
 class Pedido:
     """Entidade do Pedido de Venda."""
-    usuario_id: str
+    # Campos obrigatórios
+    usuario: Usuario
     itens: List[ItemPedido]
-    total_pedido: Decimal
     status: str
-    endereco_entrega: Endereco # Snapshot do endereço no momento da compra
+    total: Decimal
     tipo_pagamento: str
-    id: Optional[str] = field(default_factory=lambda: str(uuid.uuid4()))
-    telefone_whatsapp: Optional[str] = None
+    endereco_entrega: Endereco
+    telefone_whatsapp: str
+    # Campos opcionais/calculados
+    transacao_id: Optional[str] = None
     data_pedido: datetime = field(default_factory=datetime.now)
-    transacao_id: Optional[str] = None # Referência à TransacaoPagamento
+    id: Optional[str] = field(default_factory=lambda: str(uuid.uuid4()))
+    data_modificacao: Optional[datetime] = None

@@ -1,13 +1,13 @@
 """
 Mapeadores (Mappers) para converter entre:
-1. Modelos do Django ORM (vejoias.infrastructure.models)
+1. Modelos do Django ORM
 2. Entidades de Domínio (vejoias.core.entities)
-
-Isto garante que a camada Core trabalhe apenas com entidades puras.
 """
-from typing import List, Optional
+from typing import Any, Optional, TypeVar, Type, List, Dict
+from django.db import models
+from django.apps import apps
 
-# Importa as Entidades Puras do Core
+# Importa as entidades do Core
 from vejoias.core.entities import (
     Usuario as UsuarioEntity,
     Endereco as EnderecoEntity,
@@ -18,25 +18,53 @@ from vejoias.core.entities import (
     ItemCarrinho as ItemCarrinhoEntity,
     Pedido as PedidoEntity,
     ItemPedido as ItemPedidoEntity,
-    TransacaoPagamento as TransacaoPagamentoEntity
 )
 
-# Importa os Modelos do Django ORM da Infraestrutura
-from .models import (
-    Usuario,
-    Endereco,
-    Joia,
-    Categoria,
-    Subcategoria,
-    Carrinho,
-    ItemCarrinho,
-    Pedido,
-    ItemPedido
-)
+# Define tipos genéricos para os modelos
+DjangoModel = TypeVar('DjangoModel', bound=models.Model)
+Entity = TypeVar('Entity')
+
+# ====================================================================
+# Uso de apps.get_model para evitar dependências circulares
+# ====================================================================
+from django.apps import apps
+
+def get_model(app_label: str, model_name: str):
+    """Retorna um modelo do Django de forma segura (lazy loading)."""
+    return apps.get_model(app_label, model_name)
+
+# Classes de modelo acessadas via lazy loading
+def get_usuario_model():
+    return get_model('infrastructure', 'Usuario')
+
+def get_endereco_model():
+    return get_model('infrastructure', 'Endereco')
+
+def get_joia_model():
+    return get_model('catalog', 'Joia')
+
+def get_categoria_model():
+    return get_model('catalog', 'Categoria')
+
+def get_subcategoria_model():
+    return get_model('catalog', 'Subcategoria')
+
+def get_carrinho_model():
+    return get_model('carrinho', 'Carrinho')
+
+def get_item_carrinho_model():
+    return get_model('carrinho', 'ItemCarrinho')
+
+def get_pedido_model():
+    return get_model('vendas', 'Pedido')
+
+def get_item_pedido_model():
+    return get_model('vendas', 'ItemPedido')
 
 
 class BaseMapper:
-    """Classe base para Mapeadores com métodos de conversão genéricos."""
+# ... (O restante do código da classe BaseMapper permanece o mesmo)
+# ...
 
     @staticmethod
     def to_entity(model, entity_class):
@@ -59,10 +87,14 @@ class BaseMapper:
 # ====================================================================
 
 class CategoriaMapper(BaseMapper):
-    """Mapeador para Categoria e Subcategoria."""
+    """Mapeador para Categoria."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('catalog', 'Categoria')
 
     @staticmethod
-    def to_entity(model: Categoria) -> CategoriaEntity:
+    def to_entity(model: Any) -> Optional[CategoriaEntity]:
         """Converte Categoria Model para Categoria Entity."""
         if not model: return None
         return CategoriaEntity(
@@ -76,8 +108,12 @@ class CategoriaMapper(BaseMapper):
 
 class SubcategoriaMapper(BaseMapper):
     """Mapeador para Subcategoria."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('catalog', 'Subcategoria')
     @staticmethod
-    def to_entity(model: Subcategoria) -> SubcategoriaEntity:
+    def to_entity(model: Any) -> Optional[SubcategoriaEntity]:
         """Converte Subcategoria Model para Subcategoria Entity."""
         if not model: return None
         return SubcategoriaEntity(
@@ -90,8 +126,12 @@ class SubcategoriaMapper(BaseMapper):
 class JoiaMapper(BaseMapper):
     """Mapeador para Joia (Produto)."""
 
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('catalog', 'Joia')
+
     @staticmethod
-    def to_entity(model: Joia) -> JoiaEntity:
+    def to_entity(model: Any) -> Optional[JoiaEntity]:
         """Converte Joia Model para Joia Entity."""
         if not model: return None
         return JoiaEntity(
@@ -108,11 +148,12 @@ class JoiaMapper(BaseMapper):
         )
 
     @staticmethod
-    def to_model(entity: JoiaEntity, model: Optional[Joia] = None) -> Joia:
+    @classmethod
+    def to_model(cls, entity: JoiaEntity, model: Optional[Any] = None) -> Any:
         """Converte Joia Entity para Joia Model."""
         if not model:
             # Se for um novo registro
-            model = Joia()
+            model = cls.model_class()()
             
         model.nome = entity.nome
         model.slug = entity.slug
@@ -121,7 +162,7 @@ class JoiaMapper(BaseMapper):
         model.estoque = entity.estoque
         model.desconto = entity.desconto
         model.em_destaque = entity.em_destaque
-        model.categoria = entity.categoria.id if entity.categoria else None
+        model.categoria_id = entity.categoria.id if entity.categoria else None
         
         return model
 
@@ -133,8 +174,12 @@ class JoiaMapper(BaseMapper):
 class UsuarioMapper(BaseMapper):
     """Mapeador para o Usuário."""
 
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('core', 'Usuario')
+
     @staticmethod
-    def to_entity(model: Usuario) -> UsuarioEntity:
+    def to_entity(model: Any) -> Optional[UsuarioEntity]:
         """Converte Usuario Model para Usuario Entity."""
         if not model: return None
         return UsuarioEntity(
@@ -152,8 +197,12 @@ class UsuarioMapper(BaseMapper):
 class EnderecoMapper(BaseMapper):
     """Mapeador para Endereço."""
 
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('core', 'Endereco')
+
     @staticmethod
-    def to_entity(model: Endereco) -> EnderecoEntity:
+    def to_entity(model: Any) -> Optional[EnderecoEntity]:
         """Converte Endereco Model para Endereco Entity."""
         if not model: return None
         return EnderecoEntity(
@@ -169,10 +218,11 @@ class EnderecoMapper(BaseMapper):
         )
 
     @staticmethod
-    def to_model(entity: EnderecoEntity, usuario_id: int, model: Optional[Endereco] = None) -> Endereco:
+    @classmethod
+    def to_model(cls, entity: EnderecoEntity, usuario_id: int, model: Optional[Any] = None) -> Any:
         """Converte Endereco Entity para Endereco Model."""
         if not model:
-            model = Endereco(usuario_id=usuario_id)
+            model = cls.model_class()(usuario_id=usuario_id)
         
         model.cep = entity.cep
         model.rua = entity.rua
@@ -192,8 +242,12 @@ class EnderecoMapper(BaseMapper):
 
 class ItemCarrinhoMapper(BaseMapper):
     """Mapeador para ItemCarrinho."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('carrinho', 'ItemCarrinho')
     @staticmethod
-    def to_entity(model: ItemCarrinho) -> ItemCarrinhoEntity:
+    def to_entity(model: Any) -> Optional[ItemCarrinhoEntity]:
         """Converte ItemCarrinho Model para ItemCarrinho Entity."""
         if not model: return None
         return ItemCarrinhoEntity(
@@ -206,10 +260,11 @@ class ItemCarrinhoMapper(BaseMapper):
         )
 
     @staticmethod
-    def to_model(entity: ItemCarrinhoEntity, carrinho_id: int, model: Optional[ItemCarrinho] = None) -> ItemCarrinho:
+    @classmethod
+    def to_model(cls, entity: ItemCarrinhoEntity, carrinho_id: int, model: Optional[Any] = None) -> Any:
         """Converte ItemCarrinho Entity para ItemCarrinho Model."""
         if not model:
-            model = ItemCarrinho(carrinho_id=carrinho_id)
+            model = cls.model_class()(carrinho_id=carrinho_id)
         
         model.joia_id = entity.joia_id
         model.quantidade = entity.quantidade
@@ -218,8 +273,12 @@ class ItemCarrinhoMapper(BaseMapper):
 
 class CarrinhoMapper(BaseMapper):
     """Mapeador para Carrinho."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('carrinho', 'Carrinho')
     @staticmethod
-    def to_entity(model: Carrinho) -> CarrinhoEntity:
+    def to_entity(model: Any) -> Optional[CarrinhoEntity]:
         """Converte Carrinho Model para Carrinho Entity, incluindo itens."""
         if not model: return None
         
@@ -235,10 +294,11 @@ class CarrinhoMapper(BaseMapper):
         )
         
     @staticmethod
-    def to_model(entity: CarrinhoEntity, model: Optional[Carrinho] = None) -> Carrinho:
+    @classmethod
+    def to_model(cls, entity: CarrinhoEntity, model: Optional[Any] = None) -> Any:
         """Converte Carrinho Entity para Carrinho Model."""
         if not model:
-            model = Carrinho()
+            model = cls.model_class()()
             
         model.usuario_id = entity.usuario_id
         model.sessao_key = entity.sessao_key
@@ -252,8 +312,12 @@ class CarrinhoMapper(BaseMapper):
 
 class ItemPedidoMapper(BaseMapper):
     """Mapeador para ItemPedido."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('vendas', 'ItemPedido')
     @staticmethod
-    def to_entity(model: ItemPedido) -> ItemPedidoEntity:
+    def to_entity(model: Any) -> Optional[ItemPedidoEntity]:
         """Converte ItemPedido Model para ItemPedido Entity."""
         if not model: return None
         return ItemPedidoEntity(
@@ -266,10 +330,11 @@ class ItemPedidoMapper(BaseMapper):
         )
         
     @staticmethod
-    def to_model(entity: ItemPedidoEntity, pedido_id: int, model: Optional[ItemPedido] = None) -> ItemPedido:
+    @classmethod
+    def to_model(cls, entity: ItemPedidoEntity, pedido_id: int, model: Optional[Any] = None) -> Any:
         """Converte ItemPedido Entity para ItemPedido Model."""
         if not model:
-            model = ItemPedido(pedido_id=pedido_id)
+            model = cls.model_class()(pedido_id=pedido_id)
             
         # Snapshot dos dados, não dependem de FK para Joia
         model.joia_nome = entity.joia_nome
@@ -282,13 +347,21 @@ class ItemPedidoMapper(BaseMapper):
 
 class PedidoMapper(BaseMapper):
     """Mapeador para Pedido."""
+
+    @classmethod
+    def model_class(cls) -> Type[models.Model]:
+        return get_model('vendas', 'Pedido')
     @staticmethod
-    def to_entity(model: Pedido) -> PedidoEntity:
+    def to_entity(model: Any) -> Optional[PedidoEntity]:
         """Converte Pedido Model para Pedido Entity, incluindo endereço snapshot."""
         if not model: return None
         
         # Mapeia o snapshot de endereço para a Entidade EnderecoEntity
         endereco_entity = EnderecoEntity(
+            # Campos do EnderecoEntity que são opcionais podem ser omitidos
+            id=None,
+            principal=False,
+            # Campos mapeados do snapshot do Pedido
             cep=model.cep_entrega,
             rua=model.rua_entrega,
             numero=model.numero_entrega,
@@ -315,10 +388,11 @@ class PedidoMapper(BaseMapper):
         )
         
     @staticmethod
-    def to_model(entity: PedidoEntity, model: Optional[Pedido] = None) -> Pedido:
+    @classmethod
+    def to_model(cls, entity: PedidoEntity, model: Optional[Any] = None) -> Any:
         """Converte Pedido Entity para Pedido Model."""
         if not model:
-            model = Pedido(usuario_id=entity.usuario_id)
+            model = cls.model_class()(usuario_id=entity.usuario_id)
             
         model.status = entity.status
         model.total_pedido = entity.total_pedido
@@ -335,3 +409,5 @@ class PedidoMapper(BaseMapper):
         model.referencia_entrega = entity.endereco_entrega.referencia
         
         return model
+
+

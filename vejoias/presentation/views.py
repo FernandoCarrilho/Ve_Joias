@@ -1,5 +1,5 @@
 from django.views import View
-from django.views.generic import ListView, DetailView, View
+from django.views.generic import ListView, DetailView, View as BaseView
 from django.urls import reverse
 from django.shortcuts import render, redirect, HttpResponseRedirect
 from django.http import JsonResponse, Http404, HttpResponseServerError
@@ -31,7 +31,7 @@ from vejoias.core.exceptions import (
 )
 from vejoias.core.entities import Usuario
 
-from vejoias.infrastructure.models import Joia as JoiaModel
+from vejoias.catalog.models import Joia as JoiaModel
 from .serializers import JoiaSerializer, CarrinhoSerializer, CheckoutSerializer
 from .forms import AdicionarItemCarrinhoForm, CheckoutForm, RegistroForm, LoginForm
 from vejoias.core.use_cases import GerenciarPedidosAdminUseCase
@@ -48,12 +48,11 @@ pedido_repo = PedidoRepository()
 pagamento_gateway = MercadoPagoGateway()
 whatsapp_notifier = EvolutionAPIGateway()
 email_service = EmailServiceGateway()
-# pedido_repo = PedidoRepository() # Linha duplicada removida
 
 
-class PerfilUsuarioView(LoginRequiredMixin, View):
+class UsuarioView(LoginRequiredMixin, View):
     """View para a página de perfil do usuário."""
-    template_name = 'perfil.html'
+    template_name = 'user/perfil.html'
 
     def get(self, request):
         context = {
@@ -64,7 +63,7 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
 
 class EditarPerfilView(LoginRequiredMixin, View):
     """View placeholder para Editar Informações de Perfil."""
-    template_name = 'perfil/editar_perfil.html'
+    template_name = 'user/editar_perfil.html'
 
     def get(self, request):
         context = {'usuario': request.user}
@@ -73,7 +72,7 @@ class EditarPerfilView(LoginRequiredMixin, View):
 
 class AlterarSenhaView(LoginRequiredMixin, View):
     """View placeholder para Alterar Senha."""
-    template_name = 'perfil/alterar_senha.html'
+    template_name = 'user/alterar_senha.html'
 
     def get(self, request):
         context = {'usuario': request.user}
@@ -129,39 +128,115 @@ class HomeView(View):
 
 class ListaJoiasView(View):
     """
-    View para a página de listagem de joias.
+    View para a página de listagem de joias, incluindo filtros, busca e ordenação 
+    baseados nos parâmetros de query string (request.GET), conforme o template.
     """
-    template_name = 'lista_joias.html'
+    # A CORREÇÃO JÁ ESTAVA AQUI: template_name = 'catalog/lista_joias.html'
+    template_name = 'catalog/lista_joias.html'
 
     def get(self, request):
+        
+        # 1. Captura dos parâmetros de filtro e ordenação do request
+        busca_termo = request.GET.get('busca', '').strip()
+        # O template usa 'categoria' como ID
+        categoria_selecionada_id = request.GET.get('categoria', '') 
+        ordem_selecionada = request.GET.get('ordem', 'recente') # Default: mais recente
+
+        # 2. Definição do critério de ordenação para o repositório
+        # Mapeia a string do template para o formato de ordenação do Django/Repositório
+        ordem_map = {
+            'recente': '-data_criacao', 
+            'preco_asc': 'preco',
+            'preco_desc': '-preco',
+        }
+        ordem_repo = ordem_map.get(ordem_selecionada, '-data_criacao')
+
+        joias = []
+        categorias = []
+        nome_categoria_selecionada = ''
+        
         try:
-            joias = joia_repo.buscar_todos()
+            # Busca todas as categorias para popular o filtro <select>
+            # ATENÇÃO: É necessário que o JoiaRepository implemente 'buscar_todas_categorias()'.
+            categorias = joia_repo.buscar_todas_categorias() 
+            
+            # Joias: Aplica filtros, busca e ordenação
+            joias = joia_repo.buscar_por_criterios(
+                termo_busca=busca_termo,
+                categoria_id=categoria_selecionada_id,
+                ordem_por=ordem_repo,
+                em_estoque=True # Critério padrão
+            )
+            
+            # Nome amigável da categoria selecionada (para a mensagem de resultado)
+            if categoria_selecionada_id:
+                try:
+                    # Encontra o nome da categoria usando o ID
+                    # Assume-se que 'cat' é uma entidade/objeto com atributos 'id' e 'nome'
+                    cat_obj = next(cat for cat in categorias if str(cat.id) == categoria_selecionada_id)
+                    nome_categoria_selecionada = cat_obj.nome
+                except StopIteration:
+                    # Se o ID for inválido ou não encontrado, limpa o filtro de categoria
+                    categoria_selecionada_id = '' 
+                    
+        except AttributeError:
+             messages.error(request, "Erro: O JoiaRepository precisa do método 'buscar_todas_categorias()' para o filtro de categorias funcionar.")
+             
         except Exception as e:
             messages.error(request, f"Erro ao carregar o catálogo de joias: {e}")
-            joias = []
 
+        # 3. Construção do Contexto
         context = {
-            'joias': joias
+            'joias': joias,
+            'categorias': categorias, # Lista completa para o <select>
+            'busca_termo': busca_termo,
+            'categoria_selecionada': categoria_selecionada_id, # ID da categoria selecionada
+            'ordem_selecionada': ordem_selecionada,
+            'nome_categoria_selecionada': nome_categoria_selecionada,
+            'is_paginated': False # Placeholder para futura implementação de paginação
         }
         return render(request, self.template_name, context)
 
 
 class ListaJoiasPorCategoriaView(View):
     """
-    View para a página de listagem de joias por categoria.
+    View para a página de listagem de joias por categoria usando SLUG. 
+    (Esta view pode ser removida se o catálogo usar apenas ListaJoiasView, mas foi mantida por compatibilidade)
     """
-    template_name = 'lista_joias.html'
+    template_name = 'catalog/lista_joias.html'
 
     def get(self, request, slug):
         try:
+            # Busca apenas por slug. Não implementa os filtros completos da ListaJoiasView.
             joias = joia_repo.buscar_por_criterios(em_estoque=True, categoria_slug=slug)
+            
+            # AVISO: Para evitar que o template falhe na renderização dos filtros, 
+            # as variáveis 'categorias', 'busca_termo', 'categoria_selecionada', 
+            # etc. devem ser fornecidas, mesmo que vazias.
+            categorias = joia_repo.buscar_todas_categorias()
+            
+            # Tenta encontrar o ID da categoria pelo slug para preencher o contexto de filtro
+            categoria_selecionada_id = ''
+            nome_categoria_selecionada = ''
+            try:
+                cat_obj = next(cat for cat in categorias if cat.slug == slug)
+                categoria_selecionada_id = str(cat_obj.id)
+                nome_categoria_selecionada = cat_obj.nome
+            except:
+                pass # Ignora se não encontrar a categoria pelo slug
+            
         except Exception as e:
             messages.error(request, f"Erro ao carregar o catálogo de joias: {e}")
             joias = []
+            categorias = []
 
         context = {
             'joias': joias,
-            'categoria_slug': slug
+            'categorias': categorias,
+            'categoria_selecionada': categoria_selecionada_id,
+            'nome_categoria_selecionada': nome_categoria_selecionada,
+            'busca_termo': '',
+            'ordem_selecionada': 'recente',
         }
         return render(request, self.template_name, context)
 
@@ -170,7 +245,8 @@ class DetalheJoiaView(View):
     """
     View para a página de detalhes de uma joia.
     """
-    template_name = 'detalhe_joia.html'
+    # CORREÇÃO APLICADA: Incluindo o prefixo 'catalog/'
+    template_name = 'catalog/detalhe_joia.html'
 
     def get(self, request, pk):
         api_url = f"http://localhost:8000/api/joias/{pk}/"
@@ -204,7 +280,7 @@ class CarrinhoView(LoginRequiredMixin, View):
     """
     View para a página do carrinho de compras.
     """
-    template_name = 'carrinho.html'
+    template_name = 'cart/carrinho.html'
 
     def get(self, request):
         usuario_entity = Usuario(id=request.user.id)
@@ -333,7 +409,7 @@ def processar_checkout(request):
         'form': form,
         'carrinho': carrinho
     }
-    return render(request, 'checkout.html', context)
+    return render(request, 'checkout/checkout.html', context)
 
 @login_required
 def detalhe_pedido(request, pedido_id):
@@ -356,7 +432,8 @@ def detalhe_pedido(request, pedido_id):
     context = {
         'pedido': pedido
     }
-    return render(request, 'detalhe_pedido.html', context)
+    # CORREÇÃO APLICADA: Incluindo o prefixo 'pedido/'
+    return render(request, 'pedido/detalhe_pedido.html', context)
 
 
 # ====================================================================
@@ -376,7 +453,7 @@ def registro(request):
         form = RegistroForm()
     
     context = {'form': form}
-    return render(request, 'registro.html', context)
+    return render(request, 'auth/registro.html', context)
 
 
 def login_usuario(request):
@@ -396,7 +473,7 @@ def login_usuario(request):
         form = LoginForm()
 
     context = {'form': form}
-    return render(request, 'login.html', context)
+    return render(request, 'auth/login.html', context)
 
 
 @login_required
@@ -406,9 +483,6 @@ def logout_usuario(request):
     """
     logout(request)
     return redirect('lista_joias') # Redireciona para a página inicial após o logout
-
-
-
 
 
 class JoiaViewSet(viewsets.ModelViewSet):
@@ -438,7 +512,7 @@ class ProcessarCheckoutView(LoginRequiredMixin, View):
     """
     View para processar o checkout.
     """
-    template_name = 'checkout.html'
+    template_name = 'checkout/checkout.html'
 
     def get(self, request):
         usuario_entity = Usuario(id=request.user.id)
@@ -503,6 +577,7 @@ class DetalhePedidoView(LoginRequiredMixin, DetailView):
     """
     View para exibir os detalhes de um pedido.
     """
+    # CORREÇÃO APLICADA: Incluindo o prefixo 'pedido/'
     template_name = 'pedido/detalhe_pedido.html'
     context_object_name = 'pedido'
 
@@ -636,6 +711,3 @@ class WebhookMercadoPago(APIView):
             return Response(status=status.HTTP_200_OK)
         
         return Response(status=status.HTTP_400_BAD_REQUEST)
-    
-
-

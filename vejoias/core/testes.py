@@ -31,7 +31,9 @@ class TestAdicionarItemAoCarrinho(unittest.TestCase):
         self.joia_mock = Joia(
             id='joia-123',
             nome='Anel de Ouro',
-            preco=1500.00,
+            slug='anel-de-ouro',
+            descricao='Um lindo anel de ouro',
+            preco=Decimal('1500.00'),
             estoque=10
         )
         
@@ -267,8 +269,8 @@ class TestRemoverItemDoCarrinho(unittest.TestCase):
             carrinho_repo=self.carrinho_repo_mock
         )
         self.usuario_mock = Usuario(id=1, email='teste@example.com')
-        self.joia1 = Joia(id='joia-1', nome='Anel', preco=100.00, estoque=5)
-        self.joia2 = Joia(id='joia-2', nome='Colar', preco=200.00, estoque=3)
+        self.joia1 = Joia(id='joia-1', nome='Anel', slug='anel', descricao='Anel simples', preco=Decimal('100.00'), estoque=5)
+        self.joia2 = Joia(id='joia-2', nome='Colar', slug='colar', descricao='Colar simples', preco=Decimal('200.00'), estoque=3)
         
         self.carrinho_com_itens = Carrinho(
             id='carrinho-1',
@@ -317,7 +319,7 @@ class TestRemoverItemDoCarrinho(unittest.TestCase):
 # ====================================================================
 # CONFIGURAÇÃO DE FIXTURES (Dados Mock)
 # ====================================================================
-joia_ouro = Joia(id=1, nome="Colar de Ouro", preco=100.00, estoque=5)
+joia_ouro = Joia(id=1, nome="Colar de Ouro", slug="colar-de-ouro", descricao="Colar banhado a ouro", preco=Decimal('100.00'), estoque=5)
 item_carrinho = ItemCarrinho(joia=joia_ouro, quantidade=2)
 carrinho_cheio = Carrinho(id=99, usuario=Usuario(id=10, email="teste@vejoias.com"), itens=[item_carrinho])
 endereco_entrega = Endereco(linha1="Rua Teste, 10", cidade="São Paulo", estado="SP", cep="00000-000")
@@ -536,7 +538,7 @@ class AtualizarStatusManualTestCase(unittest.TestCase):
             total=Decimal('150.00'),
             transacao_id="TRANS-CARTAO-XYZ",
             status="PAGO", # Estado inicial
-            items=[ItemCarrinho(joia=Joia(nome="Anel Teste", preco=Decimal('150.00')), quantidade=1)]
+            items=[ItemCarrinho(joia=Joia(nome="Anel Teste", slug="anel-teste", descricao="Um anel para teste", preco=Decimal('150.00'), estoque=5), quantidade=1)]
         )
 
         # Configurar Mock do Repositório para retornar o pedido

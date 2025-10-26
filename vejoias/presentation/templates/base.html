@@ -135,6 +135,7 @@
                     <h4 class="text-lg font-semibold mb-3 text-pink-400">Ajuda</h4>
                     <ul class="space-y-2 text-sm text-gray-300">
                         <li><a href="#" class="hover:text-pink-600 transition duration-150">Fale Conosco</a></li>
+                        <!-- Rastrear Pedido usa o nome 'historico_pedidos' (OK) -->
                         <li><a href="{% url 'historico_pedidos' %}" class="hover:text-pink-600 transition duration-150">Rastrear Pedido</a></li>
                         <li><a href="#" class="hover:text-pink-600 transition duration-150">Trocas e Devoluções</a></li>
                     </ul>
@@ -146,7 +147,8 @@
                     <ul class="space-y-2 text-sm text-gray-300">
                         {% if user.is_authenticated %}
                             <li><a href="{% url 'perfil_usuario' %}" class="hover:text-pink-600 transition duration-150">Meu Perfil</a></li>
-                            <li><a href="{% url 'meus_pedidos' %}" class="hover:text-pink-600 transition duration-150">Meus Pedidos</a></li>
+                            <!-- CORREÇÃO: Alterado 'meus_pedidos' para 'historico_pedidos' para alinhar com urls.py -->
+                            <li><a href="{% url 'historico_pedidos' %}" class="hover:text-pink-600 transition duration-150">Meus Pedidos</a></li>
                             <li><a href="{% url 'logout' %}" class="hover:text-pink-600 transition duration-150">Sair</a></li>
                         {% else %}
                             <li><a href="{% url 'login' %}" class="hover:text-pink-600 transition duration-150">Login / Cadastre-se</a></li>
