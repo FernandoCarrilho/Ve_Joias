@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+.env
+
+# Desenvolvimento e IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs e arquivos temporários
+*.log
+logs/
+temp/
+
+# Arquivos de mídia e estáticos (serão montados como volumes)
+media/
+staticfiles/
+
+# Documentação
+docs/
+README.md
+*.md
+
+# Arquivos de cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Banco de dados local
+db.sqlite3

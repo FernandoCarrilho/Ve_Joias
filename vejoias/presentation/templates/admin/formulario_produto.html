@@ -1,0 +1,457 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Gerenciar Produto | Vê Jóias Admin</title>
+    <!-- Carregamento do Tailwind CSS para estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração da fonte Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- Ícones Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header Principal (Admin) -->
+    <header class="bg-gray-800 shadow-lg sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="{% url 'home' %}" class="text-3xl font-extrabold text-pink-500 tracking-wider">
+                Vê Jóias <span class="text-sm font-light text-gray-400">Admin</span>
+            </a>
+            <nav class="space-x-4 flex items-center">
+                <a href="./products_list.html" class="text-white hover:text-pink-500 transition duration-150">Lista de Produtos</a>
+                <a href="../auth.html" id="logout-link" class="text-gray-400 hover:text-red-500 transition duration-150">Sair</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 min-h-[70vh]">
+
+        <h1 id="form-title" class="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">
+            <i class="fas fa-gem text-pink-600 mr-2"></i> Adicionar Novo Produto
+        </h1>
+        
+        <!-- Formulário de Produto -->
+        <form id="product-form" class="bg-white p-6 rounded-xl shadow-xl space-y-6">
+            
+            <!-- Campo Nome -->
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome da Jóia *</label>
+                <input type="text" id="name" required class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3" placeholder="Ex: Colar Zafira de Ouro 18K">
+            </div>
+
+            <!-- Campo Descrição -->
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+                <textarea id="description" required rows="4" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3" placeholder="Detalhes sobre material, tamanho e inspiração..."></textarea>
+            </div>
+            
+            <!-- Linha de Metadados (Preço, Estoque, Categoria) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Preço -->
+                <div>
+                    <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Preço (R$) *</label>
+                    <input type="number" id="price" required min="0.01" step="0.01" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3" placeholder="0.00">
+                </div>
+
+                <!-- Estoque -->
+                <div>
+                    <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
+                    <input type="number" id="stock" required min="0" step="1" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3" placeholder="0">
+                </div>
+                
+                <!-- Categoria -->
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                    <select id="category" required class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3 bg-white">
+                        <option value="">Selecione a Categoria</option>
+                        <option value="Aneis">Anéis</option>
+                        <option value="Colares">Colares</option>
+                        <option value="Brincos">Brincos</option>
+                        <option value="Pulseiras">Pulseiras</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Campo Imagem URL -->
+            <div>
+                <label for="imageUrl" class="block text-sm font-medium text-gray-700 mb-1">URL da Imagem *</label>
+                <input type="url" id="imageUrl" required class="w-full border-gray-300 rounded-lg shadow-sm focus:border-pink-500 focus:ring-pink-500 p-3" placeholder="Ex: https://dominio.com/joia.jpg">
+                <p class="text-xs text-gray-500 mt-1">Use uma imagem de alta qualidade. Caso não tenha, use um placeholder.</p>
+                
+                <!-- Preview da Imagem -->
+                <div class="mt-4 border border-dashed border-gray-300 p-4 rounded-lg bg-gray-50 flex justify-center">
+                    <img id="image-preview" src="https://placehold.co/150x150/f9a8d4/FFFFFF?text=Preview" alt="Preview da Imagem" class="w-36 h-36 object-cover rounded-md shadow-md">
+                </div>
+            </div>
+
+            <!-- Status e Botões de Ação -->
+            <div class="flex flex-col md:flex-row justify-between items-center pt-4 border-t">
+                
+                <!-- Status (Ativo/Inativo) -->
+                <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                    <input type="checkbox" id="status" class="h-5 w-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
+                    <label for="status" class="text-sm font-medium text-gray-700">Ativo (Visível na loja)</label>
+                </div>
+                
+                <!-- Botões -->
+                <div class="flex space-x-3 w-full md:w-auto">
+                    <button type="button" id="delete-btn" class="hidden py-3 px-6 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-300 transform hover:scale-[1.01] flex items-center justify-center">
+                        <i class="fas fa-trash-alt mr-2"></i> Excluir
+                    </button>
+                    <button type="submit" id="save-btn" class="flex-grow py-3 px-6 bg-pink-600 text-white font-bold rounded-lg shadow-md hover:bg-pink-700 transition duration-300 transform hover:scale-[1.01] flex items-center justify-center">
+                        <i class="fas fa-save mr-2"></i> Salvar Produto
+                    </button>
+                </div>
+            </div>
+
+        </form>
+        
+        <!-- Mensagem de status (Modal customizado) -->
+        <div id="status-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden" onclick="closeModal()">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm mx-4 transform transition-all duration-300" onclick="event.stopPropagation()">
+                <h3 id="modal-title" class="text-xl font-bold mb-3"></h3>
+                <p id="modal-message" class="text-gray-700 mb-4"></p>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeModal()" id="modal-close-btn" class="py-2 px-4 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition">Fechar</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Confirmação de Exclusão -->
+        <div id="confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden" onclick="closeConfirmModal()">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm mx-4 transform transition-all duration-300" onclick="event.stopPropagation()">
+                <h3 class="text-xl font-bold mb-3 text-red-600">Confirmar Exclusão</h3>
+                <p class="text-gray-700 mb-4">Tem certeza de que deseja excluir permanentemente este produto? Esta ação não pode ser desfeita.</p>
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeConfirmModal()" class="py-2 px-4 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                    <button id="confirm-delete-btn" class="py-2 px-4 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition">Excluir Produto</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+    
+    <!-- Footer Simples -->
+    <footer class="bg-gray-800 text-white mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-pink-400 font-semibold mb-2">Vejoias Admin &copy; 2024</p>
+            <p class="text-sm text-gray-400">Painel de controle de produtos.</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('Debug');
+
+        // Variáveis globais obrigatórias
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        // Inicialização do Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userId = null; // ID do usuário autenticado (Admin)
+        let isEditMode = false;
+        let currentProductId = null;
+        
+        // --- Referências DOM ---
+        const formTitle = document.getElementById('form-title');
+        const productForm = document.getElementById('product-form');
+        const saveBtn = document.getElementById('save-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const imagePreview = document.getElementById('image-preview');
+        const imageUrlInput = document.getElementById('imageUrl');
+        const logoutLink = document.getElementById('logout-link');
+
+        // Campos do Formulário
+        const nameInput = document.getElementById('name');
+        const descriptionInput = document.getElementById('description');
+        const priceInput = document.getElementById('price');
+        const stockInput = document.getElementById('stock');
+        const categoryInput = document.getElementById('category');
+        const statusCheckbox = document.getElementById('status');
+        
+        // Modals
+        const statusModal = document.getElementById('status-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+
+        /**
+         * Exibe o modal de status.
+         * @param {string} title
+         * @param {string} message
+         * @param {string} type - 'success', 'error', 'info'
+         */
+        function showModal(title, message, type = 'info') {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            
+            let color = 'text-gray-800';
+            if (type === 'success') color = 'text-green-600';
+            if (type === 'error') color = 'text-red-600';
+
+            modalTitle.className = `text-xl font-bold mb-3 ${color}`;
+
+            statusModal.classList.remove('hidden');
+        }
+
+        /**
+         * Fecha o modal de status.
+         */
+        window.closeModal = function() {
+            statusModal.classList.add('hidden');
+        }
+        
+        /**
+         * Exibe o modal de confirmação.
+         */
+        function showConfirmModal() {
+            confirmModal.classList.remove('hidden');
+        }
+
+        /**
+         * Fecha o modal de confirmação.
+         */
+        window.closeConfirmModal = function() {
+            confirmModal.classList.add('hidden');
+        }
+
+        /**
+         * Retorna a referência do documento do produto.
+         * Assume que o Admin usa sua própria coleção privada para produtos.
+         */
+        function getProductDocRef(id) {
+            if (!userId) {
+                console.error("userId não está definido. Autenticação falhou.");
+                return null;
+            }
+            // Caminho: /artifacts/{appId}/users/{userId}/products/{productId}
+            return doc(db, `artifacts/${appId}/users/${userId}/products`, id);
+        }
+
+        /**
+         * Preenche o formulário com dados de um produto existente.
+         * @param {Object} product - Dados do produto.
+         */
+        function populateForm(product) {
+            nameInput.value = product.name || '';
+            descriptionInput.value = product.description || '';
+            priceInput.value = product.price || 0;
+            stockInput.value = product.stock || 0;
+            categoryInput.value = product.category || '';
+            imageUrlInput.value = product.imageUrl || '';
+            statusCheckbox.checked = product.status === 'active';
+            
+            imagePreview.src = product.imageUrl || 'https://placehold.co/150x150/f9a8d4/FFFFFF?text=Preview';
+        }
+        
+        /**
+         * Carrega o produto existente se o ID estiver na URL.
+         */
+        async function loadProduct() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            
+            if (id) {
+                currentProductId = id;
+                isEditMode = true;
+                
+                formTitle.innerHTML = `<i class="fas fa-edit text-pink-600 mr-2"></i> Editar Produto: ${id}`;
+                document.getElementById('page-title').textContent = 'Editar Produto | Vejoias Admin';
+                saveBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Atualizar Produto';
+                deleteBtn.classList.remove('hidden');
+                
+                try {
+                    const productDoc = await getDoc(getProductDocRef(id));
+                    if (productDoc.exists()) {
+                        populateForm(productDoc.data());
+                    } else {
+                        showModal("Erro", `Produto com ID ${id} não encontrado.`, 'error');
+                        // Mudar para modo de criação
+                        currentProductId = null;
+                        isEditMode = false;
+                        formTitle.innerHTML = `<i class="fas fa-gem text-pink-600 mr-2"></i> Adicionar Novo Produto`;
+                        deleteBtn.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error("Erro ao carregar produto:", error);
+                    showModal("Erro de Conexão", "Não foi possível carregar os dados. Verifique sua conexão.", 'error');
+                }
+            } else {
+                // Modo de Criação, default já está correto
+            }
+        }
+        
+        /**
+         * Manipulador de Submissão do Formulário (Salvar/Atualizar).
+         */
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!userId) {
+                showModal("Erro de Autenticação", "Você precisa estar autenticado como Admin para salvar.", 'error');
+                return;
+            }
+            
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';
+
+            // Coleta dados
+            const productData = {
+                name: nameInput.value.trim(),
+                description: descriptionInput.value.trim(),
+                price: parseFloat(priceInput.value),
+                stock: parseInt(stockInput.value),
+                category: categoryInput.value,
+                imageUrl: imageUrlInput.value.trim(),
+                status: statusCheckbox.checked ? 'active' : 'inactive',
+                // Data de criação e última atualização (opcional, mas bom)
+                createdAt: isEditMode ? currentProductData?.createdAt : new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            // Validação mínima
+            if (productData.price <= 0 || productData.stock < 0 || !productData.category) {
+                showModal("Erro de Dados", "Preço deve ser positivo, estoque não pode ser negativo e a Categoria é obrigatória.", 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = isEditMode ? '<i class="fas fa-sync-alt mr-2"></i> Atualizar Produto' : '<i class="fas fa-save mr-2"></i> Salvar Produto';
+                return;
+            }
+
+            try {
+                const docId = currentProductId || doc(collection(db, `artifacts/${appId}/users/${userId}/products`)).id;
+                
+                await setDoc(getProductDocRef(docId), productData, { merge: true });
+
+                showModal("Sucesso", `Produto ${isEditMode ? 'atualizado' : 'criado'} com sucesso!`, 'success');
+                
+                // Se foi criação, redireciona para a edição do novo produto
+                if (!isEditMode) {
+                    currentProductId = docId;
+                    isEditMode = true;
+                    setTimeout(() => {
+                        window.location.href = `./product_form.html?id=${docId}`;
+                    }, 1500);
+                }
+                
+                // Atualiza o botão e o título
+                formTitle.innerHTML = `<i class="fas fa-edit text-pink-600 mr-2"></i> Editar Produto: ${currentProductId}`;
+                saveBtn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Atualizar Produto';
+                deleteBtn.classList.remove('hidden');
+
+
+            } catch (error) {
+                console.error("Erro ao salvar produto:", error);
+                showModal("Erro", `Falha ao salvar o produto: ${error.message}`, 'error');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+        
+        /**
+         * Manipulador de Exclusão.
+         */
+        deleteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (isEditMode && currentProductId) {
+                showConfirmModal();
+            }
+        });
+        
+        confirmDeleteBtn.addEventListener('click', async () => {
+            closeConfirmModal();
+            if (!userId || !currentProductId) return;
+
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Excluindo...';
+
+            try {
+                await deleteDoc(getProductDocRef(currentProductId));
+
+                showModal("Sucesso", "Produto excluído permanentemente.", 'success');
+                
+                // Redireciona para a lista após a exclusão
+                document.getElementById('modal-close-btn').addEventListener('click', () => {
+                    window.location.href = './products_list.html';
+                });
+                
+            } catch (error) {
+                console.error("Erro ao excluir produto:", error);
+                showModal("Erro", `Falha ao excluir o produto: ${error.message}`, 'error');
+            } finally {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt mr-2"></i> Excluir';
+            }
+        });
+
+        // Previne erro de imagem quebrada e atualiza preview
+        imageUrlInput.addEventListener('input', () => {
+            imagePreview.src = imageUrlInput.value || 'https://placehold.co/150x150/f9a8d4/FFFFFF?text=Preview';
+        });
+        imagePreview.onerror = function() {
+            this.src = 'https://placehold.co/150x150/f9a8d4/FFFFFF?text=Preview';
+        };
+
+        /**
+         * Inicialização e Autenticação.
+         */
+        async function initialize() {
+            // Autenticação (deve ser Admin)
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // Usuário autenticado
+                    userId = user.uid;
+                    loadProduct();
+                } else {
+                    // Tenta autenticar via token customizado (para o ambiente Canvas)
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            // Se não houver token, faz o login anônimo
+                            const userCredential = await signInAnonymously(auth);
+                            userId = userCredential.user.uid;
+                            // Se for Admin, podemos prosseguir, mas aqui estamos assumindo que o token autentica como Admin.
+                            // Para simular o acesso Admin, vamos usar um userId fixo para a coleção.
+                            userId = 'default-admin-uid';
+                            loadProduct();
+                            showModal("Aviso", "Logado anonimamente. Suas alterações serão salvas sob um ID de Admin padrão.", 'info');
+                        }
+                    } catch (error) {
+                         console.error('Erro na autenticação Firebase:', error);
+                         showModal("Acesso Negado", "Falha ao autenticar como Administrador.", 'error');
+                    }
+                }
+            });
+            
+            // Logout
+            logoutLink.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try {
+                    await signOut(auth);
+                    window.location.href = '../auth.html';
+                } catch (error) {
+                    console.error("Erro ao fazer logout:", error);
+                    showModal("Erro", "Não foi possível desconectar.", 'error');
+                }
+            });
+        }
+        
+        initialize();
+    </script>
+</body>
+</html>
